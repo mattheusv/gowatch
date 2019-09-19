@@ -10,3 +10,7 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# binary files
+testdata/helloworld/helloworld
+testdata/http-server/http-server
