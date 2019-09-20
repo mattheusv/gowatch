@@ -1,0 +1,31 @@
+language: go
+
+
+go:
+  - 1.13.x
+
+
+os:
+  - linux
+
+
+env:
+  - GO111MODULE=on
+
+
+# Only clone the most recent commit.
+git:
+  depth: 1
+
+
+notifications:
+  email: false
+
+
+before_script:
+  - go mod download
+
+
+script:
+  - go install ./cmd/gowatch/
+  - go test -v -race ./...
