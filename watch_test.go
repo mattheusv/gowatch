@@ -11,6 +11,27 @@ var (
 	unexpectedErrorMsg = "Unexpected error: %v"
 )
 
+func TestIsToIgnoreFile(t *testing.T) {
+	w := watcher{
+		ignore: []string{"*_test.go"},
+	}
+	matched, err := w.isToIgnoreFile("main_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !matched {
+		t.Errorf("main_test.go should match with pattern *_test.go")
+	}
+	matched, err = w.isToIgnoreFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if matched {
+		t.Errorf("main.go should not match with pattern *_test.go")
+	}
+
+}
+
 func TestCompileProgram(t *testing.T) {
 	pwd, err := os.Getwd()
 	if err != nil {

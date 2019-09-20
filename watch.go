@@ -23,14 +23,18 @@ type watcher struct {
 
 	//compiled binary name to execute
 	binaryName string
+
+	// pattern of files to not watch
+	ignore []string
 }
 
 //Start start the watching for changes  in .go files
-func Start(dir string, buildFlags, runFlags []string) error {
+func Start(dir string, buildFlags, runFlags, ignore []string) error {
 	w := watcher{
 		dir:        dir,
 		buildFlags: buildFlags,
 		runFlags:   runFlags,
+		ignore:     ignore,
 	}
 	return w.watch()
 }
@@ -69,6 +73,19 @@ func (w watcher) startWatch() error {
 	return w.watchFiles(cmd)
 }
 
+func (w watcher) isToIgnoreFile(file string) (bool, error) {
+	for _, pattern := range w.ignore {
+		matched, err := filepath.Match(pattern, file)
+		if err != nil {
+			return true, err
+		}
+		if matched {
+			return matched, nil
+		}
+	}
+	return false, nil
+}
+
 func (w watcher) watchFiles(cmd *exec.Cmd) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -93,18 +110,25 @@ func (w watcher) watchFiles(cmd *exec.Cmd) error {
 			}
 			if event.Op&fsnotify.Write == fsnotify.Write {
 				if event.Name[len(event.Name)-3:] == ".go" {
-					logrus.Infof("Modified file: %s\n", event.Name)
-					logrus.Debugf("Killing current execution %d\n", cmd.Process.Pid)
-					if err := cmd.Process.Kill(); err != nil {
-						return fmt.Errorf("error to kill exiting process running: %v", err)
+					ignore, err := w.isToIgnoreFile(event.Name)
+					if err != nil {
+						return err
 					}
-					logrus.Info("Recompiling...")
-					if err := w.compileProgram(); err != nil {
-						return fmt.Errorf("could not compile program: %v", err)
-					}
-					cmd = cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
-					if err := cmd.Start(); err != nil {
-						return fmt.Errorf("error to start program: %v", err)
+					if !ignore {
+						logrus.Infof("Modified file: %s\n", event.Name)
+						logrus.Debugf("Killing current execution %d\n", cmd.Process.Pid)
+						if err := cmd.Process.Kill(); err != nil {
+							return fmt.Errorf("error to kill exiting process running: %v", err)
+						}
+						logrus.Info("Recompiling...")
+						if err := w.compileProgram(); err != nil {
+							return fmt.Errorf("could not compile program: %v", err)
+						}
+						cmd = cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
+						if err := cmd.Start(); err != nil {
+							return fmt.Errorf("error to start program: %v", err)
+						}
+
 					}
 				}
 			}
