@@ -1,4 +1,4 @@
-# gowatch
+# gowatch [![Build Status](https://travis-ci.org/msAlcantara/gowatch.svg?branch=master)](https://travis-ci.org/msalcantara/gowatch)
 
 gowatch is a tool to watch for .go files changes and rebuild automaticaly
 
