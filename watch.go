@@ -25,16 +25,8 @@ type watcher struct {
 	binaryName string
 }
 
-func initConfig(verbose bool) {
-	logrus.SetOutput(os.Stdout)
-	if verbose {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
-}
-
 //Start start the watching for changes  in .go files
-func Start(dir string, buildFlags, runFlags []string, verbose bool) error {
-	initConfig(verbose)
+func Start(dir string, buildFlags, runFlags []string) error {
 	w := watcher{
 		dir:        dir,
 		buildFlags: buildFlags,

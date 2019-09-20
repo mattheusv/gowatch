@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/msalcantara/gowatch"
+	"github.com/msalcantara/gowatch/cmd/gowatch/config"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -19,20 +21,7 @@ var rootCmd = &cobra.Command{
 	Use:   "gowatch",
 	Short: "watching .go files change since 2019-09-13",
 	Long:  "gowatch is a tool to watch for .go files changes and rebuild automaticaly",
-	Run: func(cmd *cobra.Command, args []string) {
-		if dir == "" {
-			pwd, err := os.Getwd()
-			if err != nil {
-				fmt.Printf("ERROR: %v\n", err)
-				os.Exit(3)
-			}
-			dir = pwd
-		}
-		if err := gowatch.Start(dir, buildFlags, runFlags, verbose); err != nil {
-			fmt.Printf("ERROR: %v\n", err)
-			os.Exit(3)
-		}
-	},
+	Run:   run,
 }
 
 func init() {
@@ -42,9 +31,58 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "V", false, "verbose mode")
 }
 
+func run(cmd *cobra.Command, args []string) {
+	cfg, err := initConfig()
+	if err != nil {
+		exit(err, 3)
+	}
+	initLogger(cfg.Verbose)
+	if err := gowatch.Start(cfg.Dir, cfg.Buildflags, cfg.RunFlags); err != nil {
+		exit(err, 3)
+	}
+}
+
+func initConfig() (config.Config, error) {
+	cfg, err := config.LoadYml()
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return config.Config{}, err
+		}
+	}
+	cfg.Dir = dir
+	if cfg.Dir == "" || cfg.Dir == "." {
+		pwd, err := os.Getwd()
+		if err != nil {
+			return config.Config{}, err
+		}
+		cfg.Dir = pwd
+	}
+	if len(buildFlags) != 0 {
+		cfg.Buildflags = buildFlags
+	}
+	if len(runFlags) != 0 {
+		cfg.RunFlags = runFlags
+	}
+	if verbose != false {
+		cfg.Verbose = verbose
+	}
+	return cfg, nil
+}
+
+func initLogger(verbose bool) {
+	logrus.SetOutput(os.Stdout)
+	if verbose {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+}
+
+func exit(err error, code int) {
+	fmt.Printf("ERROR: %v\n", err)
+	os.Exit(code)
+}
+
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		os.Exit(2)
-		fmt.Printf("ERROR: %v\n", err)
+		exit(err, 2)
 	}
 }
