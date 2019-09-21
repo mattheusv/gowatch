@@ -33,6 +33,7 @@ type watcher struct {
 	// pattern of files to not watch
 	ignore []string
 
+	//don't rebuild program after go fmt changes
 	skipFmt bool
 }
 
@@ -163,7 +164,7 @@ func (w watcher) restart(cmd *exec.Cmd, event fsnotify.Event) error {
 		if err := w.compileProgram(); err != nil {
 			return ErrCmdCompile
 		}
-		cmd = cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
+		*cmd = *cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
 		if err := cmd.Start(); err != nil {
 			return fmt.Errorf("error to start program: %v", err)
 		}

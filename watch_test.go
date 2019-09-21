@@ -4,12 +4,69 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 var (
 	assertErrorMsg     = "Expected: %v; Got %v"
 	unexpectedErrorMsg = "Unexpected error: %v"
 )
+
+func TestRestart(t *testing.T) {
+	w := watcher{
+		binaryName: "http-server",
+		dir:        "./testdata/http-server",
+	}
+	event := fsnotify.Event{
+		Name: "main.go",
+	}
+
+	if err := w.compileProgram(); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.restart(cmd, event); err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRestartIgnore(t *testing.T) {
+	w := watcher{
+		binaryName: "http-server",
+		dir:        "./testdata/http-server",
+		ignore:     []string{"main.go"},
+	}
+	event := fsnotify.Event{
+		Name: "main.go",
+	}
+
+	if err := w.compileProgram(); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	pidBeforeRestart := cmd.Process.Pid
+	if err := w.restart(cmd, event); err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	if cmd.Process.Pid != pidBeforeRestart {
+		t.Errorf("program restart without need %d != %d", pidBeforeRestart, cmd.Process.Pid)
+	}
+}
 
 func TestIsToIgnoreFile(t *testing.T) {
 	w := watcher{
