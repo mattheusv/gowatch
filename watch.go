@@ -120,14 +120,17 @@ func (w watcher) watchFiles(cmd *exec.Cmd) error {
 			}
 			if event.Op&fsnotify.Write == fsnotify.Write {
 				lastFileChange = event.Name
-				if event.Name == lastFileChange {
-					// second change because of fmt
-					if fileChangeFmt >= 1 {
-						fileChangeFmt = 0
-						// skipt go fmt change and not rebuild and run again
-						continue
+				if w.skipFmt {
+					if event.Name == lastFileChange {
+						// second change because of fmt
+						if fileChangeFmt >= 1 {
+							logrus.Debug("Skipping fmt changes")
+							fileChangeFmt = 0
+							// skipt go fmt change and not rebuild and run again
+							continue
+						}
+						fileChangeFmt++
 					}
-					fileChangeFmt++
 				}
 				if event.Name[len(event.Name)-3:] == ".go" {
 					if err := w.restart(cmd, event); err != nil {
