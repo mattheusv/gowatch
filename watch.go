@@ -1,6 +1,7 @@
 package gowatch
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +10,11 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	//ErrCmdCompile go build command failed to compile program error
+	ErrCmdCompile = errors.New("error to compile program")
 )
 
 type watcher struct {
@@ -110,8 +116,7 @@ func (w watcher) watchFiles(cmd *exec.Cmd) error {
 		select {
 		case event, ok := <-watcher.Events:
 			if !ok {
-				logrus.Errorf("error to get event: %v\n", err)
-				os.Exit(5)
+				return fmt.Errorf("error to get event: %v", err)
 			}
 			if event.Op&fsnotify.Write == fsnotify.Write {
 				lastFileChange = event.Name
@@ -126,14 +131,15 @@ func (w watcher) watchFiles(cmd *exec.Cmd) error {
 				}
 				if event.Name[len(event.Name)-3:] == ".go" {
 					if err := w.restart(cmd, event); err != nil {
-						return err
+						if !errors.Is(err, ErrCmdCompile) {
+							return err
+						}
 					}
 				}
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
-				logrus.Errorf("error watching files changes: %v\n", err)
-				os.Exit(5)
+				return fmt.Errorf("watching files changes: %v", err)
 			}
 		}
 	}
@@ -152,7 +158,7 @@ func (w watcher) restart(cmd *exec.Cmd, event fsnotify.Event) error {
 		}
 		logrus.Info("Recompiling...")
 		if err := w.compileProgram(); err != nil {
-			return err
+			return ErrCmdCompile
 		}
 		cmd = cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
 		if err := cmd.Start(); err != nil {
