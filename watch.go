@@ -26,15 +26,18 @@ type watcher struct {
 
 	// pattern of files to not watch
 	ignore []string
+
+	skipFmt bool
 }
 
 //Start start the watching for changes  in .go files
-func Start(dir string, buildFlags, runFlags, ignore []string) error {
+func Start(dir string, buildFlags, runFlags, ignore []string, skipFmt bool) error {
 	w := watcher{
 		dir:        dir,
 		buildFlags: buildFlags,
 		runFlags:   runFlags,
 		ignore:     ignore,
+		skipFmt:    skipFmt,
 	}
 	return w.watch()
 }
@@ -101,6 +104,8 @@ func (w watcher) watchFiles(cmd *exec.Cmd) error {
 			return err
 		}
 	}
+	lastFileChange := ""
+	fileChangeFmt := 0
 	for {
 		select {
 		case event, ok := <-watcher.Events:
@@ -109,26 +114,19 @@ func (w watcher) watchFiles(cmd *exec.Cmd) error {
 				os.Exit(5)
 			}
 			if event.Op&fsnotify.Write == fsnotify.Write {
-				if event.Name[len(event.Name)-3:] == ".go" {
-					ignore, err := w.isToIgnoreFile(event.Name)
-					if err != nil {
-						return err
+				lastFileChange = event.Name
+				if event.Name == lastFileChange {
+					// second change because of fmt
+					if fileChangeFmt >= 1 {
+						fileChangeFmt = 0
+						// skipt go fmt change and not rebuild and run again
+						continue
 					}
-					if !ignore {
-						logrus.Infof("Modified file: %s\n", event.Name)
-						logrus.Debugf("Killing current execution %d\n", cmd.Process.Pid)
-						if err := cmd.Process.Kill(); err != nil {
-							return fmt.Errorf("error to kill exiting process running: %v", err)
-						}
-						logrus.Info("Recompiling...")
-						if err := w.compileProgram(); err != nil {
-							return fmt.Errorf("could not compile program: %v", err)
-						}
-						cmd = cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
-						if err := cmd.Start(); err != nil {
-							return fmt.Errorf("error to start program: %v", err)
-						}
-
+					fileChangeFmt++
+				}
+				if event.Name[len(event.Name)-3:] == ".go" {
+					if err := w.restart(cmd, event); err != nil {
+						return err
 					}
 				}
 			}
@@ -139,6 +137,30 @@ func (w watcher) watchFiles(cmd *exec.Cmd) error {
 			}
 		}
 	}
+}
+
+func (w watcher) restart(cmd *exec.Cmd, event fsnotify.Event) error {
+	ignore, err := w.isToIgnoreFile(event.Name)
+	if err != nil {
+		return err
+	}
+	if !ignore {
+		logrus.Infof("Modified file: %s\n", event.Name)
+		logrus.Debugf("Killing current execution %d\n", cmd.Process.Pid)
+		if err := cmd.Process.Kill(); err != nil {
+			return fmt.Errorf("error to kill exiting process running: %v", err)
+		}
+		logrus.Info("Recompiling...")
+		if err := w.compileProgram(); err != nil {
+			return err
+		}
+		cmd = cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
+		if err := cmd.Start(); err != nil {
+			return fmt.Errorf("error to start program: %v", err)
+		}
+
+	}
+	return nil
 }
 
 func discoverSubDirectories(baseDir string) ([]string, error) {
