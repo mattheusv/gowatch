@@ -16,6 +16,7 @@ var (
 	runFlags    []string
 	ignoreFiles []string
 	verbose     bool
+	configFile  string
 )
 
 var rootCmd = &cobra.Command{
@@ -31,6 +32,7 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceVar(&runFlags, "run-flags", []string{}, "flags to execute binary")
 	rootCmd.PersistentFlags().StringSliceVar(&ignoreFiles, "ignore", []string{}, "pattern of files to not watch")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "V", false, "verbose mode")
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", ".gowatch.yml", "config file")
 }
 
 func run(cmd *cobra.Command, args []string) {
@@ -45,7 +47,7 @@ func run(cmd *cobra.Command, args []string) {
 }
 
 func initConfig() (config.Config, error) {
-	cfg, err := config.LoadYml()
+	cfg, err := config.LoadYml(configFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return config.Config{}, err

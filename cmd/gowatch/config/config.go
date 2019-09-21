@@ -6,8 +6,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const gowatchYmlFile = ".gowatch.yml"
-
 type Config struct {
 	Dir        string   `yaml:"dir"`
 	Buildflags []string `yaml:"build_flags"`
@@ -27,9 +25,9 @@ func loadYmlConfig(cfg *Config, ymlFile string) error {
 	return nil
 }
 
-func LoadYml() (Config, error) {
+func LoadYml(configFile string) (Config, error) {
 	var cfg Config
-	if err := loadYmlConfig(&cfg, gowatchYmlFile); err != nil {
+	if err := loadYmlConfig(&cfg, configFile); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
