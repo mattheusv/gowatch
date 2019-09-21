@@ -7,8 +7,8 @@ ignore:
   - "*_test.go"
 
 build_flags:
-  - x
-  - v
+  - -x
+  - -v
 
 
 run_flags:
