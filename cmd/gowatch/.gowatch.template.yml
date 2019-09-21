@@ -1,0 +1,14 @@
+verbose: false
+
+dir: .
+
+ignore:
+  - "*_test.go"
+
+build_flags:
+  - -x
+  - -v
+
+run_flags:
+  - localhost
+  - 8000
