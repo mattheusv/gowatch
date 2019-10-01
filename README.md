@@ -16,14 +16,14 @@ $ gowatch
 ```
 
 ## Watch with custon flags
- - #### Flags to go build command:
+  - #### Flags to your binary command:
+   - `$ gowatch apparg1 apparg2`
+
+- #### Flags to go build command:
    - `$ gowatch --build-flags -build-flag1,build-flag2`
 
- - #### Flags to your binary command:
-   - `$ gowatch --run-flags your-custon-flag1,your-custon-flag2`
-
  - #### Watch in specific directory(default is current):
-   - `$ gowatch -d /custon/path`
+   - `$ gowatch -d ./custon/path`
 
 
 ## License
