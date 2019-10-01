@@ -13,7 +13,6 @@ import (
 var (
 	dir         string
 	buildFlags  []string
-	runFlags    []string
 	ignoreFiles []string
 	verbose     bool
 	configFile  string
@@ -30,7 +29,6 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&dir, "dir", "d", "", "directory to wath .go files")
 	rootCmd.PersistentFlags().StringSliceVar(&buildFlags, "build-flags", []string{}, "flags to go build command")
-	rootCmd.PersistentFlags().StringSliceVar(&runFlags, "run-flags", []string{}, "flags to execute binary")
 	rootCmd.PersistentFlags().StringSliceVar(&ignoreFiles, "ignore", []string{}, "pattern of files to not watch")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "V", false, "verbose mode")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", ".gowatch.yml", "config file")
@@ -38,7 +36,7 @@ func init() {
 }
 
 func run(cmd *cobra.Command, args []string) {
-	cfg, err := initConfig()
+	cfg, err := initConfig(args...)
 	if err != nil {
 		exit(err, 3)
 	}
@@ -48,7 +46,7 @@ func run(cmd *cobra.Command, args []string) {
 	}
 }
 
-func initConfig() (config.Config, error) {
+func initConfig(args ...string) (config.Config, error) {
 	cfg, err := config.LoadYml(configFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -66,8 +64,8 @@ func initConfig() (config.Config, error) {
 	if len(buildFlags) != 0 {
 		cfg.Buildflags = buildFlags
 	}
-	if len(runFlags) != 0 {
-		cfg.RunFlags = runFlags
+	if len(args) != 0 {
+		cfg.RunFlags = args
 	}
 	if verbose != false {
 		cfg.Verbose = verbose
