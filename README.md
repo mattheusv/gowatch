@@ -20,7 +20,7 @@ $ gowatch
    - `$ gowatch apparg1 apparg2`
 
 - #### Flags to go build command:
-   - `$ gowatch --build-flags -build-flag1,build-flag2`
+   - `$ gowatch --build-flags -x,-v`
 
  - #### Watch in specific directory(default is current):
    - `$ gowatch -d ./custon/path`
