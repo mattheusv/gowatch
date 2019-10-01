@@ -83,6 +83,7 @@ func initConfig() (config.Config, error) {
 
 func initLogger(verbose bool) {
 	logrus.SetOutput(os.Stdout)
+	logrus.SetFormatter(&logrus.TextFormatter{})
 	if verbose {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
