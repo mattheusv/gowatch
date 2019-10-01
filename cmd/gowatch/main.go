@@ -21,15 +21,22 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "gowatch",
-	Short: "watching .go files change since 2019-09-13",
+	Short: "watch for .go files changes and rebuild automaticaly",
 	Long:  "gowatch is a tool to watch for .go files changes and rebuild automaticaly",
 	Run:   run,
+	Example: `
+$ gowatch apparg1 apparg2
+$ gowatch -d ./custon_dir apparg1 apparg2\
+$ gowatch -c .gowatch.yml"
+$ gowatch --build-flags -x,-v
+	`,
+	Version: "0.2.0",
 }
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&dir, "dir", "d", "", "directory to wath .go files")
 	rootCmd.PersistentFlags().StringSliceVar(&buildFlags, "build-flags", []string{}, "flags to go build command")
-	rootCmd.PersistentFlags().StringSliceVar(&ignoreFiles, "ignore", []string{}, "pattern of files to not watch")
+	rootCmd.PersistentFlags().StringSliceVarP(&ignoreFiles, "ignore", "i", []string{}, "pattern of files to not watch")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "V", false, "verbose mode")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", ".gowatch.yml", "config file")
 	rootCmd.PersistentFlags().BoolVar(&skipFmt, "skip-fmt", false, "skip go fmt changes")
