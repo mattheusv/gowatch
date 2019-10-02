@@ -1,8 +1,10 @@
 package gowatch
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/fsnotify/fsnotify"
@@ -13,58 +15,24 @@ var (
 	unexpectedErrorMsg = "Unexpected error: %v"
 )
 
-func TestRestart(t *testing.T) {
-	w := watcher{
-		binaryName: "http-server",
-		dir:        "./testdata/http-server",
-	}
-	event := fsnotify.Event{
-		Name: "main.go",
-	}
+type watcherAppTest struct{}
 
-	if err := w.compileProgram(); err != nil {
-		t.Fatal(err)
-	}
-
-	cmd := cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if err := w.restart(cmd, event); err != nil {
-		t.Fatalf(unexpectedErrorMsg, err)
-	}
-	if err := cmd.Process.Kill(); err != nil {
-		t.Fatal(err)
-	}
-}
+func (wa watcherAppTest) compile() error              { return nil }
+func (wa watcherAppTest) start() (*exec.Cmd, error)   { return nil, nil }
+func (wa watcherAppTest) restart(cmd *exec.Cmd) error { return errors.New("program should not restart") }
 
 func TestRestartIgnore(t *testing.T) {
 	w := watcher{
-		binaryName: "http-server",
-		dir:        "./testdata/http-server",
-		ignore:     []string{"main.go"},
+		dir:    "./testdata/http-server",
+		ignore: []string{"main.go"},
+		app:    watcherAppTest{},
 	}
 	event := fsnotify.Event{
 		Name: "main.go",
 	}
 
-	if err := w.compileProgram(); err != nil {
-		t.Fatal(err)
-	}
-
-	cmd := cmdRunBinary(w.dir, w.binaryName, w.runFlags...)
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	pidBeforeRestart := cmd.Process.Pid
-	if err := w.restart(cmd, event); err != nil {
+	if err := w.restart(&exec.Cmd{}, event); err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
-	}
-	if err := cmd.Process.Kill(); err != nil {
-		t.Fatal(err)
-	}
-	if cmd.Process.Pid != pidBeforeRestart {
-		t.Errorf("program restart without need %d != %d", pidBeforeRestart, cmd.Process.Pid)
 	}
 }
 
@@ -89,19 +57,6 @@ func TestIsToIgnoreFile(t *testing.T) {
 
 }
 
-func TestCompileProgram(t *testing.T) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	w := watcher{
-		dir:        fmt.Sprintf("%s/testdata/helloworld", pwd),
-		binaryName: fmt.Sprintf("%s/testdata/helloworld/helloworld", pwd),
-	}
-	if err := w.compileProgram(); err != nil {
-		t.Errorf(unexpectedErrorMsg, err)
-	}
-}
 func TestDiscoverSubDirectories(t *testing.T) {
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -139,46 +94,4 @@ func TestGetCurrentFolderNameEndWithSlash(t *testing.T) {
 	if folder != folderExpected {
 		t.Fatalf(assertErrorMsg, folderExpected, folder)
 	}
-}
-
-func TestCmdRunBinary(t *testing.T) {
-	dir := "/home/unittest/gowatch/testcase"
-	binaryName := "testcase"
-	pathExpected := fmt.Sprintf("./%s", binaryName)
-	cmd := cmdRunBinary(dir, binaryName)
-	if cmd.Path != pathExpected {
-		t.Errorf(assertErrorMsg, pathExpected, cmd.Path)
-	}
-}
-
-func TestCmdRunBase(t *testing.T) {
-	dir := "/home/unittest/gowatch/testcase"
-	command := "testcase"
-	args := []string{"unittest", "--foobar"}
-	argsExpected := []string{"testcase", "unittest", "--foobar"}
-	cmd := cmdRunBase(dir, command, args...)
-	if cmd.Dir != dir {
-		t.Errorf(assertErrorMsg, dir, cmd.Dir)
-	}
-	if cmd.Path != command {
-		t.Errorf(assertErrorMsg, command, cmd.Path)
-	}
-	if cmd.Stderr != os.Stderr {
-		t.Errorf(assertErrorMsg, "os.Stderr", cmd.Stderr)
-	}
-	if cmd.Stdout != os.Stdout {
-		t.Errorf(assertErrorMsg, "os.Stdout", cmd.Stdout)
-	}
-	if cmd.Stdin != os.Stdin {
-		t.Errorf(assertErrorMsg, "os.Stdin", cmd.Stdin)
-	}
-	if len(cmd.Args) != len(argsExpected) {
-		t.Fatalf(assertErrorMsg, len(argsExpected), len(cmd.Args))
-	}
-	for i, arg := range cmd.Args {
-		if arg != argsExpected[i] {
-			t.Errorf(assertErrorMsg, argsExpected[i], arg)
-		}
-	}
-
 }
