@@ -21,6 +21,36 @@ func (wa watcherAppTest) compile() error              { return nil }
 func (wa watcherAppTest) start() (*exec.Cmd, error)   { return nil, nil }
 func (wa watcherAppTest) restart(cmd *exec.Cmd) error { return errors.New("program should not restart") }
 
+func TestHasNewDirectoriesFalse(t *testing.T) {
+	currentDirectories := []string{}
+	dir := "./testdata/helloworld/"
+	newDirectories, exist, err := hasNewDirectories(dir, currentDirectories)
+	if err != nil {
+		t.Fatal(unexpectedErrorMsg, err)
+	}
+	if exist {
+		t.Errorf("should not return new directories")
+	}
+	if len(newDirectories) != 0 {
+		t.Errorf("should not return new directories %v\n", newDirectories)
+	}
+}
+
+func TestHasNewDirectories(t *testing.T) {
+	currentDirectories := []string{}
+	dir := "./testdata/http-server/"
+	newDirectories, exist, err := hasNewDirectories(dir, currentDirectories)
+	if err != nil {
+		t.Fatal(unexpectedErrorMsg, err)
+	}
+	if !exist {
+		t.Errorf("should return new directories")
+	}
+	if len(newDirectories) == 0 {
+		t.Errorf("should return new directories")
+	}
+}
+
 func TestRestartIgnore(t *testing.T) {
 	w := watcher{
 		dir:    "./testdata/http-server",
@@ -93,5 +123,13 @@ func TestGetCurrentFolderNameEndWithSlash(t *testing.T) {
 	folder := getCurrentFolderName(dir)
 	if folder != folderExpected {
 		t.Fatalf(assertErrorMsg, folderExpected, folder)
+	}
+}
+
+func TestContains(t *testing.T) {
+	list := []string{"gowatch"}
+	value := list[0]
+	if !contains(list, value) {
+		t.Errorf("%s exist in %v\n", value, list)
 	}
 }

@@ -109,12 +109,30 @@ func (w watcher) watchFiles(cmd *exec.Cmd) error {
 	if err != nil {
 		return err
 	}
-	for _, dir := range directories {
-		if err := watcher.Add(dir); err != nil {
+	addDirectories := func(w *fsnotify.Watcher, d []string) error {
+		for _, dir := range d {
+			if err := watcher.Add(dir); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := addDirectories(watcher, directories); err != nil {
+		return err
+	}
+
+	for {
+		newDirectories, exist, err := hasNewDirectories(w.dir, directories)
+		if err != nil {
 			return err
 		}
-	}
-	for {
+		if exist {
+			logrus.Debugf("find new directories: %v\n", newDirectories)
+			if err := addDirectories(watcher, newDirectories); err != nil {
+				return err
+			}
+		}
 		if err := w.writeEvent(watcher, cmd); err != nil {
 			return err
 		}
@@ -133,6 +151,15 @@ func (w watcher) restart(cmd *exec.Cmd, event fsnotify.Event) error {
 	return nil
 }
 
+func contains(list []string, value string) bool {
+	for _, n := range list {
+		if value == n {
+			return true
+		}
+	}
+	return false
+}
+
 func discoverSubDirectories(baseDir string) ([]string, error) {
 	directories := []string{}
 	if err := filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
@@ -147,6 +174,25 @@ func discoverSubDirectories(baseDir string) ([]string, error) {
 		return nil, err
 	}
 	return directories, nil
+}
+
+func hasNewDirectories(dir string, currentDirectories []string) ([]string, bool, error) {
+	newDirectories := []string{}
+	directories, err := discoverSubDirectories(dir)
+	if err != nil {
+		return nil, false, err
+	}
+	for _, d := range directories {
+		if d != dir {
+			if !contains(currentDirectories, d) {
+				newDirectories = append(newDirectories, d)
+			}
+		}
+	}
+	if len(newDirectories) != 0 {
+		return newDirectories, true, nil
+	}
+	return nil, false, nil
 }
 
 func getCurrentFolderName(dir string) string {
