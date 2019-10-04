@@ -55,7 +55,7 @@ func (wa watcherApp) restart(cmd *exec.Cmd) error {
 	if err := cmd.Process.Kill(); err != nil {
 		return fmt.Errorf("error to kill exiting process running: %v", err)
 	}
-	logrus.Info("Recompiling...")
+	logrus.Debugf("Recompiling...")
 	if err := wa.compile(); err != nil {
 		return ErrCmdCompile
 	}

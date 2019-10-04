@@ -127,7 +127,7 @@ func (w watcher) restart(cmd *exec.Cmd, event fsnotify.Event) error {
 		return err
 	}
 	if !ignore {
-		logrus.Infof("Modified file: %s\n", event.Name)
+		logrus.Debugf("Modified file: %s\n", event.Name)
 		return w.app.restart(cmd)
 	}
 	return nil

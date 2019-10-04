@@ -47,7 +47,10 @@ func run(cmd *cobra.Command, args []string) {
 	if err != nil {
 		exit(err, 3)
 	}
-	initLogger(cfg.Verbose)
+	if cfg.Verbose {
+		initLogger()
+
+	}
 	if err := gowatch.Start(cfg.Dir, cfg.Buildflags, cfg.RunFlags, cfg.Ignore, cfg.SkipFmt); err != nil {
 		exit(err, 3)
 	}
@@ -86,12 +89,13 @@ func initConfig(args ...string) (config.Config, error) {
 	return cfg, nil
 }
 
-func initLogger(verbose bool) {
+func initLogger() {
 	logrus.SetOutput(os.Stdout)
-	logrus.SetFormatter(&logrus.TextFormatter{})
-	if verbose {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
+	logrus.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "2006-01-02T15:04:05",
+	})
+	logrus.SetLevel(logrus.DebugLevel)
 }
 
 func exit(err error, code int) {
