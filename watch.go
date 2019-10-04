@@ -51,15 +51,12 @@ func (w watcher) start() error {
 	if err := w.app.compile(); err != nil {
 		return err
 	}
-	return w.startWatch()
-}
-
-func (w watcher) startWatch() error {
 	cmd, err := w.app.start()
 	if err != nil {
 		return err
 	}
 	return w.watchFiles(cmd)
+
 }
 
 func (w watcher) isToIgnoreFile(file string) (bool, error) {
