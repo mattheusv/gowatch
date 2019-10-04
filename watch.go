@@ -75,6 +75,33 @@ func (w watcher) isToIgnoreFile(file string) (bool, error) {
 	return false, nil
 }
 
+func (w watcher) writeEvent(watcher *fsnotify.Watcher, cmd *exec.Cmd) error {
+	select {
+	case event, ok := <-watcher.Events:
+		if !ok {
+			return nil
+		}
+		if event.Op&fsnotify.Write == fsnotify.Write {
+			if w.skipFmt {
+				// TODO implement skip fmt changes
+				logrus.Warning("--skip-fmt not implemented")
+			}
+			if event.Name[len(event.Name)-3:] == ".go" {
+				if err := w.restart(cmd, event); err != nil {
+					if !errors.Is(err, ErrCmdCompile) {
+						return err
+					}
+				}
+			}
+		}
+	case err, ok := <-watcher.Errors:
+		if !ok {
+			return fmt.Errorf("watcher files changes error: %v", err)
+		}
+	}
+	return nil
+}
+
 func (w watcher) watchFiles(cmd *exec.Cmd) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -90,40 +117,9 @@ func (w watcher) watchFiles(cmd *exec.Cmd) error {
 			return err
 		}
 	}
-	lastFileChange := ""
-	fileChangeFmt := 0
 	for {
-		select {
-		case event, ok := <-watcher.Events:
-			if !ok {
-				return fmt.Errorf("error to get event: %v", err)
-			}
-			if event.Op&fsnotify.Write == fsnotify.Write {
-				lastFileChange = event.Name
-				if w.skipFmt {
-					if event.Name == lastFileChange {
-						// second change because of fmt
-						if fileChangeFmt >= 1 {
-							logrus.Debug("Skipping fmt changes")
-							fileChangeFmt = 0
-							// skipt go fmt change and not rebuild and run again
-							continue
-						}
-						fileChangeFmt++
-					}
-				}
-				if event.Name[len(event.Name)-3:] == ".go" {
-					if err := w.restart(cmd, event); err != nil {
-						if !errors.Is(err, ErrCmdCompile) {
-							return err
-						}
-					}
-				}
-			}
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return fmt.Errorf("watching files changes: %v", err)
-			}
+		if err := w.writeEvent(watcher, cmd); err != nil {
+			return err
 		}
 	}
 }
