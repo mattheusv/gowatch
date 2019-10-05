@@ -8,22 +8,80 @@ gowatch is a tool to watch for .go files changes and rebuild automaticaly
 $ go get -u github.com/msalcantara/gowatch/cmd/gowatch
 ```
 
-## Simple Usage
+## Usage
 In you project path just type gowatch
 
-```bash
+```
 $ gowatch
 ```
 
-## Watch with custon flags
-  - #### Flags to your binary command:
-   - `$ gowatch apparg1 apparg2`
+For help use `-h`or `--help`
 
-- #### Flags to go build command:
-   - `$ gowatch --build-flags -x,-v`
+```
+$ gowatch -h 
+```
 
- - #### Watch in specific directory(default is current):
-   - `$ gowatch -d ./custon/path`
+For version
+
+```
+$ gowatch --version
+```
+
+Pass argunments to your app
+
+```
+$ gowatch apparg1 apparg2
+```
+
+Use custon args to `go build` command
+
+```
+$ gowatch --build-flags -x,-v
+```
+
+Watch custon directory (default is current)
+
+```
+$ gowatch -d ./custon/path
+```
+
+gowatch restart in any .go files changes. To ignore some pattern of files use:
+
+```
+$ gowatch -i *_test.go
+```
+
+To show debug info of gowatch
+
+```
+$ gowatch -V
+```
+
+## Default Config
+
+To use an default config, create a file called `.gowatch.yml` or use `--config` flag to pass a different file name. CLI flags override values of the file.
+
+This file can have any flag that CLI accept.
+
+```yaml
+verbose: true
+
+
+dir: .
+
+ignore:
+  - "*_test.go"
+
+build_flags:
+  - -x
+  - -v
+
+
+run_flags:
+  - localhost
+  - 8000
+
+```
 
 
 ## License
