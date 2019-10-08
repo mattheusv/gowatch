@@ -1,31 +1,28 @@
 language: go
 
+sudo: false
 
 go:
   - 1.13.x
 
-
 os:
   - linux
 
-
 env:
   - GO111MODULE=on
-
 
 # Only clone the most recent commit.
 git:
   depth: 1
 
-
 notifications:
   email: false
 
-
 before_script:
   - go mod download
-
+  - go get github.com/mattn/goveralls
 
 script:
   - go install ./cmd/gowatch/
-  - go test -v -race ./...
+  - go test -v -race -coverprofile=coverage.out ./...
+  - $GOPATH/bin/goveralls -service=travis-ci
