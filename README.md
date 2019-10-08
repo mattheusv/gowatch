@@ -18,7 +18,7 @@ $ gowatch
 For help use `-h`or `--help`
 
 ```
-$ gowatch -h 
+$ gowatch -h
 ```
 
 For version
@@ -27,7 +27,7 @@ For version
 $ gowatch --version
 ```
 
-Pass argunments to your app
+Pass arguments to your app
 
 ```
 $ gowatch apparg1 apparg2
