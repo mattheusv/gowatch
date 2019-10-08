@@ -16,7 +16,6 @@ var (
 	ignoreFiles []string
 	verbose     bool
 	configFile  string
-	skipFmt     bool
 )
 
 var rootCmd = &cobra.Command{
@@ -26,7 +25,7 @@ var rootCmd = &cobra.Command{
 	Run:   run,
 	Example: `
 $ gowatch apparg1 apparg2
-$ gowatch -d ./custon_dir apparg1 apparg2\
+$ gowatch -d ./custon_dir apparg1 apparg2
 $ gowatch -c .gowatch.yml"
 $ gowatch --build-flags -x,-v
 	`,
@@ -39,7 +38,6 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceVarP(&ignoreFiles, "ignore", "i", []string{}, "pattern of files to not watch")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "V", false, "verbose mode")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", ".gowatch.yml", "config file")
-	rootCmd.PersistentFlags().BoolVar(&skipFmt, "skip-fmt", false, "skip go fmt changes")
 }
 
 func run(cmd *cobra.Command, args []string) {
@@ -49,9 +47,8 @@ func run(cmd *cobra.Command, args []string) {
 	}
 	if cfg.Verbose {
 		initLogger()
-
 	}
-	if err := gowatch.Start(cfg.Dir, cfg.Buildflags, cfg.RunFlags, cfg.Ignore, cfg.SkipFmt); err != nil {
+	if err := gowatch.Start(cfg.Dir, cfg.Buildflags, cfg.RunFlags, cfg.Ignore); err != nil {
 		exit(err, 3)
 	}
 }
@@ -82,9 +79,6 @@ func initConfig(args ...string) (config.Config, error) {
 	}
 	if len(ignoreFiles) != 0 {
 		cfg.Ignore = ignoreFiles
-	}
-	if skipFmt != false {
-		cfg.SkipFmt = skipFmt
 	}
 	return cfg, nil
 }

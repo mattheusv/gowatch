@@ -12,7 +12,6 @@ type Config struct {
 	RunFlags   []string `yaml:"run_flags"`
 	Ignore     []string `yamll:"ignore"`
 	Verbose    bool     `yaml:"verbose"`
-	SkipFmt    bool     `yaml:"skip_fmt"`
 }
 
 func loadYmlConfig(cfg *Config, ymlFile string) error {

@@ -24,19 +24,15 @@ type watcher struct {
 	// pattern of files to not watch
 	ignore []string
 
-	//don't rebuild program after go fmt changes
-	skipFmt bool
-
 	//interface to start, restart and build the watched program
 	app app
 }
 
 //Start start the watching for changes  in .go files
-func Start(dir string, buildFlags, runFlags, ignore []string, skipFmt bool) error {
+func Start(dir string, buildFlags, runFlags, ignore []string) error {
 	w := watcher{
-		ignore:  ignore,
-		skipFmt: skipFmt,
-		dir:     dir,
+		ignore: ignore,
+		dir:    dir,
 		app: watcherApp{
 			dir:        dir,
 			runFlags:   runFlags,
@@ -56,7 +52,6 @@ func (w watcher) start() error {
 		return err
 	}
 	return w.watchFiles(cmd)
-
 }
 
 func (w watcher) isToIgnoreFile(file string) (bool, error) {
@@ -79,10 +74,6 @@ func (w watcher) writeEvent(watcher *fsnotify.Watcher, cmd *exec.Cmd) error {
 			return nil
 		}
 		if event.Op&fsnotify.Write == fsnotify.Write {
-			if w.skipFmt {
-				// TODO implement skip fmt changes
-				logrus.Warning("--skip-fmt not implemented")
-			}
 			if event.Name[len(event.Name)-3:] == ".go" {
 				if err := w.restart(cmd, event); err != nil {
 					if !errors.Is(err, ErrCmdCompile) {
