@@ -1,4 +1,4 @@
-# gowatch [![Build Status](https://travis-ci.org/msAlcantara/gowatch.svg?branch=master)](https://travis-ci.org/msalcantara/gowatch)
+# gowatch [![Build Status](https://travis-ci.org/msAlcantara/gowatch.svg?branch=master)](https://travis-ci.org/msalcantara/gowatch) [![Coverage Status](https://coveralls.io/repos/github/msAlcantara/gowatch/badge.svg?branch=master)](https://coveralls.io/github/msAlcantara/gowatch?branch=master)
 
 gowatch is a tool to watch for .go files changes and rebuild automaticaly
 
