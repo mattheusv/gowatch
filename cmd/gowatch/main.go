@@ -11,11 +11,11 @@ import (
 )
 
 var (
-	dir         string
-	buildFlags  []string
-	ignoreFiles []string
-	verbose     bool
-	configFile  string
+	dirFlag         string
+	buildFlagsFlag  []string
+	ignoreFilesFlag []string
+	verboseFlag     bool
+	configFileFlag  string
 )
 
 var rootCmd = &cobra.Command{
@@ -33,15 +33,15 @@ $ gowatch --build-flags -x,-v
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&dir, "dir", "d", "", "directory to wath .go files")
-	rootCmd.PersistentFlags().StringSliceVar(&buildFlags, "build-flags", []string{}, "flags to go build command")
-	rootCmd.PersistentFlags().StringSliceVarP(&ignoreFiles, "ignore", "i", []string{}, "pattern of files to not watch")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "V", false, "verbose mode")
-	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", ".gowatch.yml", "config file")
+	rootCmd.PersistentFlags().StringVarP(&dirFlag, "dir", "d", "", "directory to wath .go files")
+	rootCmd.PersistentFlags().StringSliceVar(&buildFlagsFlag, "build-flags", []string{}, "flags to go build command")
+	rootCmd.PersistentFlags().StringSliceVarP(&ignoreFilesFlag, "ignore", "i", []string{}, "pattern of files to not watch")
+	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "V", false, "verbose mode")
+	rootCmd.PersistentFlags().StringVarP(&configFileFlag, "config", "c", ".gowatch.yml", "config file")
 }
 
 func run(cmd *cobra.Command, args []string) {
-	cfg, err := initConfig(args...)
+	cfg, err := initConfig(dirFlag, buildFlagsFlag, args, ignoreFilesFlag, verboseFlag)
 	if err != nil {
 		exit(err, 3)
 	}
@@ -53,8 +53,8 @@ func run(cmd *cobra.Command, args []string) {
 	}
 }
 
-func initConfig(args ...string) (config.Config, error) {
-	cfg, err := config.LoadYml(configFile)
+func initConfig(dir string, buildFlags, runFlags, ignoreFlag []string, verbose bool) (config.Config, error) {
+	cfg, err := config.LoadYml(dir)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return config.Config{}, err
@@ -71,14 +71,14 @@ func initConfig(args ...string) (config.Config, error) {
 	if len(buildFlags) != 0 {
 		cfg.Buildflags = buildFlags
 	}
-	if len(args) != 0 {
-		cfg.RunFlags = args
+	if len(runFlags) != 0 {
+		cfg.RunFlags = runFlags
 	}
 	if verbose != false {
 		cfg.Verbose = verbose
 	}
-	if len(ignoreFiles) != 0 {
-		cfg.Ignore = ignoreFiles
+	if len(ignoreFlag) != 0 {
+		cfg.Ignore = ignoreFlag
 	}
 	return cfg, nil
 }
