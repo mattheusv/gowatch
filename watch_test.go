@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	assertErrorMsg     = "Expected: %v; Got %v"
-	unexpectedErrorMsg = "Unexpected error: %v"
+	assertErrorMsg                 = "Expected: %v; Got %v"
+	unexpectedErrorMsg             = "Unexpected error: %v"
+	errProgramShoultNotRestartTest = errors.New("program should not restart")
 )
 
 type appTestCompileError struct{}
@@ -21,7 +22,7 @@ type appTestCompileError struct{}
 func (wa appTestCompileError) compile() error            { return nil }
 func (wa appTestCompileError) start() (*exec.Cmd, error) { return nil, nil }
 func (wa appTestCompileError) restart(cmd *exec.Cmd) error {
-	return errors.New("program should not restart")
+	return errProgramShoultNotRestartTest
 }
 
 type appTest struct{}
@@ -63,6 +64,46 @@ func TestAddNewDirectories(t *testing.T) {
 	if err := addNewDirectories(w, tmpDir, currentDirectories); err != nil {
 		t.Errorf(unexpectedErrorMsg, err)
 	}
+}
+
+func TestWriteEventRestart(t *testing.T) {
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := createTmpDir("TestWriteEventRestart")
+	if err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	defer os.RemoveAll(dir)
+	if err := w.Add(dir); err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	watcher := watcher{
+		app: appTestCompileError{},
+	}
+
+	tmpFile, err := createTmpGoFile(dir, "main.go")
+	if err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	t.Logf("Create tmp file: %s\n", tmpFile.Name())
+
+	// create file event
+	//should pass
+	if err := watcher.writeEvent(w, nil); err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+	tmpFile.Write([]byte(`package main
+	func main() {}`))
+
+	// write event
+	if err := watcher.writeEvent(w, nil); err != nil {
+		if !errors.Is(err, errProgramShoultNotRestartTest) {
+			t.Errorf(unexpectedErrorMsg, err)
+		}
+	}
+
 }
 
 func TestWriteEvent(t *testing.T) {
