@@ -16,11 +16,19 @@ var (
 	unexpectedErrorMsg = "Unexpected error: %v"
 )
 
-type watcherAppTest struct{}
+type appTestCompileError struct{}
 
-func (wa watcherAppTest) compile() error              { return nil }
-func (wa watcherAppTest) start() (*exec.Cmd, error)   { return nil, nil }
-func (wa watcherAppTest) restart(cmd *exec.Cmd) error { return errors.New("program should not restart") }
+func (wa appTestCompileError) compile() error            { return nil }
+func (wa appTestCompileError) start() (*exec.Cmd, error) { return nil, nil }
+func (wa appTestCompileError) restart(cmd *exec.Cmd) error {
+	return errors.New("program should not restart")
+}
+
+type appTest struct{}
+
+func (wa appTest) compile() error              { return nil }
+func (wa appTest) start() (*exec.Cmd, error)   { return nil, nil }
+func (wa appTest) restart(cmd *exec.Cmd) error { return nil }
 
 func createTmpDir(prefix string) (string, error) {
 	dir, err := ioutil.TempDir("", prefix)
@@ -124,11 +132,25 @@ func TestHasNewDirectories(t *testing.T) {
 	}
 }
 
+func TestRestart(t *testing.T) {
+	w := watcher{
+		dir: "./testdata/http-server",
+		app: appTest{},
+	}
+	event := fsnotify.Event{
+		Name: "main.go",
+	}
+
+	if err := w.restart(&exec.Cmd{}, event); err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+}
+
 func TestRestartIgnore(t *testing.T) {
 	w := watcher{
 		dir:    "./testdata/http-server",
 		ignore: []string{"main.go"},
-		app:    watcherAppTest{},
+		app:    appTestCompileError{},
 	}
 	event := fsnotify.Event{
 		Name: "main.go",
