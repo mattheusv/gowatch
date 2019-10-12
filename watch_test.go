@@ -3,6 +3,7 @@ package gowatch
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"testing"
@@ -20,6 +21,55 @@ type watcherAppTest struct{}
 func (wa watcherAppTest) compile() error              { return nil }
 func (wa watcherAppTest) start() (*exec.Cmd, error)   { return nil, nil }
 func (wa watcherAppTest) restart(cmd *exec.Cmd) error { return errors.New("program should not restart") }
+
+func createTmpDir(prefix string) (string, error) {
+	dir, err := ioutil.TempDir("", prefix)
+	if err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+func createTmpGoFile(dir, pattern string) (*os.File, error) {
+	return os.Create(fmt.Sprintf("%s/%s", dir, pattern))
+}
+
+func TestWriteEvent(t *testing.T) {
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := createTmpDir("TestWriteEvent")
+	if err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	defer os.RemoveAll(dir)
+	if err := w.Add(dir); err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	watcher := watcher{
+		ignore: []string{"/tmp/*/main.go"},
+	}
+
+	tmpFile, err := createTmpGoFile(dir, "main.go")
+	if err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	t.Logf("Create tmp file: %s\n", tmpFile.Name())
+
+	// create file event
+	//should pass
+	if err := watcher.writeEvent(w, nil); err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+	tmpFile.Write([]byte(`package main
+	func main() {}`))
+
+	// write event
+	if err := watcher.writeEvent(w, nil); err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+}
 
 func TestHasNewDirectoriesFalse(t *testing.T) {
 	currentDirectories := []string{}
