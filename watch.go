@@ -40,10 +40,10 @@ func Start(dir string, buildFlags, runFlags, ignore []string) error {
 			binaryName: getCurrentFolderName(dir),
 		},
 	}
-	return w.start()
+	return w.run()
 }
 
-func (w watcher) start() error {
+func (w watcher) run() error {
 	if err := w.app.compile(); err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (w watcher) start() error {
 	if err != nil {
 		return err
 	}
-	return w.watchFiles(cmd)
+	return w.watch(cmd)
 }
 
 func (w watcher) isToIgnoreFile(file string) (bool, error) {
@@ -90,7 +90,23 @@ func (w watcher) writeEvent(watcher *fsnotify.Watcher, cmd *exec.Cmd) error {
 	return nil
 }
 
-func (w watcher) watchFiles(cmd *exec.Cmd) error {
+func addNewDirectories(w *fsnotify.Watcher, dir string, currentDirectories []string) error {
+	newDirectories, exist, err := hasNewDirectories(dir, currentDirectories)
+	if err != nil {
+		return err
+	}
+	if exist {
+		logrus.Debugf("find new directories: %v\n", newDirectories)
+		for _, dir := range newDirectories {
+			if err := w.Add(dir); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (w watcher) watch(cmd *exec.Cmd) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -100,34 +116,21 @@ func (w watcher) watchFiles(cmd *exec.Cmd) error {
 	if err != nil {
 		return err
 	}
-	addDirectories := func(w *fsnotify.Watcher, d []string) error {
-		for _, dir := range d {
-			if err := watcher.Add(dir); err != nil {
-				return err
-			}
+	for _, d := range directories {
+		if err := watcher.Add(d); err != nil {
+			return err
 		}
-		return nil
-	}
-
-	if err := addDirectories(watcher, directories); err != nil {
-		return err
 	}
 
 	for {
-		newDirectories, exist, err := hasNewDirectories(w.dir, directories)
-		if err != nil {
+		if err := addNewDirectories(watcher, w.dir, directories); err != nil {
 			return err
-		}
-		if exist {
-			logrus.Debugf("find new directories: %v\n", newDirectories)
-			if err := addDirectories(watcher, newDirectories); err != nil {
-				return err
-			}
 		}
 		if err := w.writeEvent(watcher, cmd); err != nil {
 			return err
 		}
 	}
+
 }
 
 func (w watcher) restart(cmd *exec.Cmd, event fsnotify.Event) error {

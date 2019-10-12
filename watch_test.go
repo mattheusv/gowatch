@@ -34,6 +34,29 @@ func createTmpGoFile(dir, pattern string) (*os.File, error) {
 	return os.Create(fmt.Sprintf("%s/%s", dir, pattern))
 }
 
+func TestAddNewDirectories(t *testing.T) {
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	tmpDir, err := ioutil.TempDir("", "TestAddNewDirectories")
+	if err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	defer os.RemoveAll(tmpDir)
+	existTmpdir, err := ioutil.TempDir(tmpDir, "TestAddNewDirectories")
+	if err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	currentDirectories := []string{existTmpdir}
+	if _, err = ioutil.TempDir(tmpDir, "TestAddNewDirectories"); err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	if err := addNewDirectories(w, tmpDir, currentDirectories); err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+}
+
 func TestWriteEvent(t *testing.T) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
