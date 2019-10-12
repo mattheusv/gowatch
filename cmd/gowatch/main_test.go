@@ -2,16 +2,36 @@ package main
 
 import (
 	"errors"
+	"os"
 	"testing"
 
 	"gopkg.in/yaml.v2"
+)
+
+var (
+	assertErrorMsg     = "Expected: %v; Got %v"
+	unexpectedErrorMsg = "Unexpected error: %v"
 )
 
 func TestInitConfigErrorYml(t *testing.T) {
 	_, err := initConfig("./testdata/gowatch.yml.invalid", []string{}, []string{}, []string{}, false)
 	var typeError *yaml.TypeError
 	if !errors.As(err, &typeError) {
-		t.Errorf(err.Error())
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+}
+
+func TestInitConfigDirPwd(t *testing.T) {
+	cfg, err := initConfig("", []string{}, []string{}, []string{}, false)
+	if err != nil {
+		t.Fatal(unexpectedErrorMsg, err)
+	}
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(unexpectedErrorMsg, err)
+	}
+	if cfg.Dir != pwd {
+		t.Errorf(assertErrorMsg, pwd, cfg.Dir)
 	}
 }
 
