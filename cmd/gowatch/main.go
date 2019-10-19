@@ -29,7 +29,7 @@ $ gowatch -d ./custon_dir apparg1 apparg2
 $ gowatch -c .gowatch.yml"
 $ gowatch --build-flags -x,-v
 	`,
-	Version: "0.3.0",
+	Version: "0.4.0",
 }
 
 func init() {
