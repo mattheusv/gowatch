@@ -13,8 +13,59 @@ var (
 	unexpectedErrorMsg = "Unexpected error: %v"
 )
 
+func contains(list []string, value string) bool {
+	for _, n := range list {
+		if value == n {
+			return true
+		}
+	}
+	return false
+}
+
+func TestRunFlagsFlagsArgs(t *testing.T) {
+	args := []string{"--run-flags", "localhost,8080-v", "foo", "bar"}
+	cfg, err := cli(args)
+	if err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+	for _, arg := range cfg.RunFlags {
+		if !contains(args, arg) {
+			t.Errorf("invalid parse: %s not exist in %v[%v]", arg, args, len(cfg.RunFlags))
+		}
+	}
+
+}
+
+func TestRunFlagsFlags(t *testing.T) {
+	args := []string{"--run-flags", "localhost,8080-v"}
+	cfg, err := cli(args)
+	if err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+	for _, arg := range cfg.RunFlags {
+		if !contains(args, arg) {
+			t.Errorf("invalid parse: %s not exist in %v[%v]", arg, args, len(cfg.RunFlags))
+		}
+	}
+
+}
+func TestRunFlagsArgs(t *testing.T) {
+	args := []string{"localhost", "8080"}
+	cfg, err := cli(args)
+	if err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+
+	for _, arg := range cfg.RunFlags {
+		if !contains(args, arg) {
+			t.Errorf("invalid parse: %s not exist", arg)
+		}
+	}
+
+}
+
 func TestInitConfigErrorYml(t *testing.T) {
-	_, err := initConfig("./testdata/gowatch.yml.invalid", []string{}, []string{}, []string{}, false)
+	_, err := cli([]string{"-c", "./testdata/gowatch.yml.invalid"})
 	var typeError *yaml.TypeError
 	if !errors.As(err, &typeError) {
 		t.Errorf(unexpectedErrorMsg, err)
@@ -22,7 +73,7 @@ func TestInitConfigErrorYml(t *testing.T) {
 }
 
 func TestInitConfigDirPwd(t *testing.T) {
-	cfg, err := initConfig("", []string{}, []string{}, []string{}, false)
+	cfg, err := cli([]string{})
 	if err != nil {
 		t.Fatal(unexpectedErrorMsg, err)
 	}
@@ -36,54 +87,53 @@ func TestInitConfigDirPwd(t *testing.T) {
 }
 
 func TestInitConfigCmdFlags(t *testing.T) {
-	dir := "/tmp/whatever.yml"
-	cfg, err := initConfig(dir, []string{
-		"x",
-		"v",
-	}, []string{
-		"8080",
-	}, []string{
-		"*_test.go",
-	}, true)
+	errTemplate := "%s don't load correctlly from command line: %v"
+	dir := "/tmp/whatever/dir"
+	cfg, err := cli([]string{"-d", dir, "-V", "-i", "*_test.go", "--build-flags", "x,v", "localhost 8000"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !cfg.Verbose {
-		t.Errorf("verbose field don't load correctlly from cmd file")
+		t.Errorf(errTemplate, "verbose", cfg.Verbose)
 	}
 	if cfg.Dir != dir {
-		t.Errorf("dir field don't load correctlly from cmd file")
+		t.Errorf(errTemplate, "dir", cfg.Dir)
 	}
 	if len(cfg.Ignore) == 0 {
-		t.Errorf("ignore field don't load correctlly from cmd file")
+		t.Errorf(errTemplate, "ignore", cfg.Ignore)
 	}
 	if len(cfg.Buildflags) == 0 {
-		t.Errorf("build_flags field don't load correctlly from cmd file")
+		t.Errorf(errTemplate, "build-flags", cfg.Buildflags)
 	}
 	if len(cfg.RunFlags) == 0 {
-		t.Errorf("run_flags field don't load correctlly from cmd file")
+		t.Errorf(errTemplate, "run-flags", cfg.RunFlags)
 	}
 }
 
 func TestInitConfigConfigFile(t *testing.T) {
-	dir := "./testdata/gowatch.yml"
-	cfg, err := initConfig(dir, []string{}, []string{}, []string{}, false)
+	errTemplate := "%s don't load correctlly from command line: %v"
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(unexpectedErrorMsg, err)
+	}
+
+	cfg, err := cli([]string{"-c", "./testdata/gowatch.yml"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !cfg.Verbose {
-		t.Errorf("verbose field don't load correctlly from config file")
+		t.Errorf(errTemplate, "verbose", cfg.Verbose)
 	}
-	if cfg.Dir != dir {
-		t.Errorf("dir field don't load correctlly from config file")
+	if cfg.Dir != pwd {
+		t.Errorf(errTemplate, "dir", cfg.Dir)
 	}
 	if len(cfg.Ignore) == 0 {
-		t.Errorf("ignore field don't load correctlly from config file")
+		t.Errorf(errTemplate, "ignore", cfg.Ignore)
 	}
 	if len(cfg.Buildflags) == 0 {
-		t.Errorf("build_flags field don't load correctlly from config file")
+		t.Errorf(errTemplate, "build-flags", cfg.Buildflags)
 	}
 	if len(cfg.RunFlags) == 0 {
-		t.Errorf("run_flags field don't load correctlly from config file")
+		t.Errorf(errTemplate, "run-flags", cfg.RunFlags)
 	}
 }

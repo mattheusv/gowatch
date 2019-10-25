@@ -3,64 +3,83 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/msalcantara/gowatch"
 	"github.com/msalcantara/gowatch/cmd/gowatch/config"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-var (
-	dirFlag         string
-	buildFlagsFlag  []string
-	ignoreFilesFlag []string
-	verboseFlag     bool
-	configFileFlag  string
-)
-
-var rootCmd = &cobra.Command{
-	Use:   "gowatch",
-	Short: "watch for .go files changes and rebuild automaticaly",
-	Long:  "gowatch is a tool to watch for .go files changes and rebuild automaticaly",
-	Run:   run,
-	Example: `
-$ gowatch apparg1 apparg2
-$ gowatch -d ./custon_dir apparg1 apparg2
-$ gowatch -c .gowatch.yml"
-$ gowatch --build-flags -x,-v
-	`,
-	Version: "0.4.0",
-}
-
-func init() {
-	rootCmd.PersistentFlags().StringVarP(&dirFlag, "dir", "d", "", "directory to wath .go files")
-	rootCmd.PersistentFlags().StringSliceVar(&buildFlagsFlag, "build-flags", []string{}, "flags to go build command")
-	rootCmd.PersistentFlags().StringSliceVarP(&ignoreFilesFlag, "ignore", "i", []string{}, "pattern of files to not watch")
-	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "V", false, "verbose mode")
-	rootCmd.PersistentFlags().StringVarP(&configFileFlag, "config", "c", ".gowatch.yml", "config file")
-}
-
-func run(cmd *cobra.Command, args []string) {
-	cfg, err := initConfig(dirFlag, buildFlagsFlag, args, ignoreFilesFlag, verboseFlag)
+func main() {
+	cfg, err := cli(os.Args[1:])
 	if err != nil {
-		exit(err, 3)
+		fmt.Fprintln(os.Stderr, errors.Wrapf(err, "Error parsing commandline arguments"))
+		os.Exit(2)
 	}
-	if cfg.Verbose {
-		initLogger()
-	}
+
 	if err := gowatch.Start(cfg.Dir, cfg.Buildflags, cfg.RunFlags, cfg.Ignore); err != nil {
-		exit(err, 3)
+		fmt.Fprintln(os.Stderr, errors.Wrapf(err, "Error to start gowatch"))
+		os.Exit(2)
 	}
 }
 
-func initConfig(dir string, buildFlags, runFlags, ignoreFlag []string, verbose bool) (config.Config, error) {
-	cfg, err := config.LoadYml(dir)
+func cli(args []string) (config.Config, error) {
+	var (
+		cfg                                       config.Config
+		configFileFlag                            string
+		buildFlags, runFlags, runArgs, ignoreFlag []string
+		dirFlag                                   string
+		verboseFlag                               bool
+	)
+
+	{
+		a := kingpin.New(filepath.Base(os.Args[0]), "watch for .go files changes and rebuild automaticaly")
+		//TODO improvement version management
+		a.Version("v0.4.0")
+		a.HelpFlag.Short('h')
+
+		a.Flag("config", "config file (default .gowatch.yml)").Short('c').Default(".gowatch.yml").StringVar(&configFileFlag)
+
+		a.Flag("build-flags", "flags to go build command").StringsVar(&buildFlags)
+
+		a.Flag("run-flags", "custon args to your app").StringsVar(&runFlags)
+
+		a.Flag("dir", "directory to wath .go files").Short('d').Default(".").StringVar(&dirFlag)
+
+		a.Flag("ignore", "pattern of files to not watch").Short('i').StringsVar(&ignoreFlag)
+
+		a.Flag("verbose", "verbose mode").Short('V').BoolVar(&verboseFlag)
+
+		a.Arg("your-args", "custon args to your app").StringsVar(&runArgs)
+		_, err := a.Parse(args)
+		if err != nil {
+			return config.Config{}, err
+		}
+	}
+
+	cfg, err := config.LoadYml(configFileFlag)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return config.Config{}, err
 		}
 	}
-	cfg.Dir = dir
+	if len(runArgs) != 0 {
+		cfg.RunFlags = runArgs
+	}
+	if len(runFlags) != 0 {
+		cfg.RunFlags = runFlags
+	}
+	if len(buildFlags) != 0 {
+		cfg.Buildflags = buildFlags
+	}
+
+	if len(ignoreFlag) != 0 {
+		cfg.Ignore = ignoreFlag
+	}
+
+	cfg.Dir = dirFlag
 	if cfg.Dir == "" || cfg.Dir == "." {
 		pwd, err := os.Getwd()
 		if err != nil {
@@ -68,37 +87,17 @@ func initConfig(dir string, buildFlags, runFlags, ignoreFlag []string, verbose b
 		}
 		cfg.Dir = pwd
 	}
-	if len(buildFlags) != 0 {
-		cfg.Buildflags = buildFlags
+	if verboseFlag != false {
+		cfg.Verbose = verboseFlag
 	}
-	if len(runFlags) != 0 {
-		cfg.RunFlags = runFlags
-	}
-	if verbose != false {
-		cfg.Verbose = verbose
-	}
-	if len(ignoreFlag) != 0 {
-		cfg.Ignore = ignoreFlag
+	if cfg.Verbose {
+		logrus.SetOutput(os.Stdout)
+		logrus.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp:   true,
+			TimestampFormat: "2006-01-02T15:04:05",
+		})
+		logrus.SetLevel(logrus.DebugLevel)
+
 	}
 	return cfg, nil
-}
-
-func initLogger() {
-	logrus.SetOutput(os.Stdout)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: "2006-01-02T15:04:05",
-	})
-	logrus.SetLevel(logrus.DebugLevel)
-}
-
-func exit(err error, code int) {
-	fmt.Printf("ERROR: %v\n", err)
-	os.Exit(code)
-}
-
-func main() {
-	if err := rootCmd.Execute(); err != nil {
-		exit(err, 2)
-	}
 }
