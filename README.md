@@ -33,10 +33,16 @@ Pass arguments to your app
 $ gowatch apparg1 apparg2
 ```
 
+Or
+
+```
+$ gowatch --run-flags="-c file_config.conf"
+```
+
 Use custon args to `go build` command
 
 ```
-$ gowatch --build-flags -x,-v
+$ gowatch --build-flags=-x,-v
 ```
 
 Watch custon directory (default is current)

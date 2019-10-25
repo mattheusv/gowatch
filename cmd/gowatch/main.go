@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/msalcantara/gowatch"
 	"github.com/msalcantara/gowatch/cmd/gowatch/config"
@@ -27,11 +28,12 @@ func main() {
 
 func cli(args []string) (config.Config, error) {
 	var (
-		cfg                                       config.Config
-		configFileFlag                            string
-		buildFlags, runFlags, runArgs, ignoreFlag []string
-		dirFlag                                   string
-		verboseFlag                               bool
+		cfg                              config.Config
+		configFileFlag                   string
+		buildFlags, runFlags, ignoreFlag string
+		runArgs                          []string
+		dirFlag                          string
+		verboseFlag                      bool
 	)
 
 	{
@@ -42,13 +44,13 @@ func cli(args []string) (config.Config, error) {
 
 		a.Flag("config", "config file (default .gowatch.yml)").Short('c').Default(".gowatch.yml").StringVar(&configFileFlag)
 
-		a.Flag("build-flags", "flags to go build command").StringsVar(&buildFlags)
+		a.Flag("build-flags", "flags to go build command").StringVar(&buildFlags)
 
-		a.Flag("run-flags", "custon args to your app").StringsVar(&runFlags)
+		a.Flag("run-flags", "custon args to your app").StringVar(&runFlags)
 
 		a.Flag("dir", "directory to wath .go files").Short('d').Default(".").StringVar(&dirFlag)
 
-		a.Flag("ignore", "pattern of files to not watch").Short('i').StringsVar(&ignoreFlag)
+		a.Flag("ignore", "pattern of files to not watch").Short('i').StringVar(&ignoreFlag)
 
 		a.Flag("verbose", "verbose mode").Short('V').BoolVar(&verboseFlag)
 
@@ -69,14 +71,14 @@ func cli(args []string) (config.Config, error) {
 		cfg.RunFlags = runArgs
 	}
 	if len(runFlags) != 0 {
-		cfg.RunFlags = runFlags
+		cfg.RunFlags = strings.Split(runFlags, ",")
 	}
 	if len(buildFlags) != 0 {
-		cfg.Buildflags = buildFlags
+		cfg.Buildflags = strings.Split(buildFlags, ",")
 	}
 
 	if len(ignoreFlag) != 0 {
-		cfg.Ignore = ignoreFlag
+		cfg.Ignore = strings.Split(ignoreFlag, ",")
 	}
 
 	cfg.Dir = dirFlag

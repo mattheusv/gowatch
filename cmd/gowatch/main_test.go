@@ -22,34 +22,36 @@ func contains(list []string, value string) bool {
 	return false
 }
 
-func TestRunFlagsFlagsArgs(t *testing.T) {
-	args := []string{"--run-flags", "localhost,8080-v", "foo", "bar"}
-	cfg, err := cli(args)
-	if err != nil {
-		t.Errorf(unexpectedErrorMsg, err)
-	}
-	for _, arg := range cfg.RunFlags {
-		if !contains(args, arg) {
-			t.Errorf("invalid parse: %s not exist in %v[%v]", arg, args, len(cfg.RunFlags))
-		}
-	}
-
-}
-
-func TestRunFlagsFlags(t *testing.T) {
-	args := []string{"--run-flags", "localhost,8080-v"}
-	cfg, err := cli(args)
-	if err != nil {
-		t.Errorf(unexpectedErrorMsg, err)
-	}
-	for _, arg := range cfg.RunFlags {
-		if !contains(args, arg) {
-			t.Errorf("invalid parse: %s not exist in %v[%v]", arg, args, len(cfg.RunFlags))
-		}
-	}
-
-}
 func TestRunFlagsArgs(t *testing.T) {
+	args := []string{"--run-flags", "localhost,8080,-v", "foo", "bar"}
+	argsExpected := []string{"--run-flags", "localhost", "8080", "-v", "foo", "bar"}
+	cfg, err := cli(args)
+	if err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+	for _, arg := range cfg.RunFlags {
+		if !contains(argsExpected, arg) {
+			t.Errorf("invalid parse: %s not exist in %v[%v]", arg, args, len(cfg.RunFlags))
+		}
+	}
+
+}
+
+func TestRunFlags(t *testing.T) {
+	args := []string{"--run-flags", "localhost,8080-v"}
+	argsExpected := []string{"--run-flags", "localhost", "8080-v"}
+	cfg, err := cli(args)
+	if err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+	for _, arg := range cfg.RunFlags {
+		if !contains(argsExpected, arg) {
+			t.Errorf("invalid parse: %s not exist in %v[%v]", arg, args, len(cfg.RunFlags))
+		}
+	}
+
+}
+func TestRunArgs(t *testing.T) {
 	args := []string{"localhost", "8080"}
 	cfg, err := cli(args)
 	if err != nil {
