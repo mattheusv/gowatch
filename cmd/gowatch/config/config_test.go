@@ -5,7 +5,6 @@ import (
 )
 
 var (
-	assertErrorMsg            = "Expected: %v; Got %v"
 	unexpectedErrorMsg        = "Unexpected error: %v"
 	keyDontLoadedCorrectlyMsg = "key %s don't loaded correctly"
 )

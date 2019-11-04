@@ -37,9 +37,7 @@ func (wa watcherApp) compile() error {
 		}
 	}
 	buildFlags := []string{"build"}
-	for _, buildFlag := range wa.buildFlags {
-		buildFlags = append(buildFlags, buildFlag)
-	}
+	buildFlags = append(buildFlags, wa.buildFlags...)
 	return cmdRunBase(wa.dir, "go", buildFlags...).Run()
 }
 func (wa watcherApp) start() (*exec.Cmd, error) {

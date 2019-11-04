@@ -94,8 +94,10 @@ func TestWriteEventRestart(t *testing.T) {
 	if err := watcher.writeEvent(w, nil); err != nil {
 		t.Errorf(unexpectedErrorMsg, err)
 	}
-	tmpFile.Write([]byte(`package main
-	func main() {}`))
+	if _, err := tmpFile.Write([]byte(`package main
+	func main() {}`)); err != nil {
+		t.Fatal(err)
+	}
 
 	// write event
 	if err := watcher.writeEvent(w, nil); err != nil {
@@ -134,8 +136,10 @@ func TestWriteEvent(t *testing.T) {
 	if err := watcher.writeEvent(w, nil); err != nil {
 		t.Errorf(unexpectedErrorMsg, err)
 	}
-	tmpFile.Write([]byte(`package main
-	func main() {}`))
+	if _, err := tmpFile.Write([]byte(`package main
+	func main() {}`)); err != nil {
+		t.Fatal(err)
+	}
 
 	// write event
 	if err := watcher.writeEvent(w, nil); err != nil {

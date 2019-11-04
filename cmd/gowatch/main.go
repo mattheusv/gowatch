@@ -89,7 +89,7 @@ func cli(args []string) (config.Config, error) {
 		}
 		cfg.Dir = pwd
 	}
-	if verboseFlag != false {
+	if verboseFlag {
 		cfg.Verbose = verboseFlag
 	}
 	if cfg.Verbose {
