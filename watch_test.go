@@ -21,6 +21,7 @@ type appTestCompileError struct{}
 
 func (wa appTestCompileError) Compile() error            { return nil }
 func (wa appTestCompileError) Start() (*exec.Cmd, error) { return nil, nil }
+func (wa appTestCompileError) Stop(cmd *exec.Cmd) error  { return nil }
 func (wa appTestCompileError) Restart(cmd *exec.Cmd) error {
 	return errProgramShoultNotRestartTest
 }
@@ -29,6 +30,7 @@ type appTest struct{}
 
 func (wa appTest) Compile() error              { return nil }
 func (wa appTest) Start() (*exec.Cmd, error)   { return nil, nil }
+func (wa appTest) Stop(cmd *exec.Cmd) error    { return nil }
 func (wa appTest) Restart(cmd *exec.Cmd) error { return nil }
 
 func createTmpDir(prefix string) (string, error) {
@@ -203,6 +205,27 @@ func TestRestartIgnore(t *testing.T) {
 
 	if err := w.restart(&exec.Cmd{}, event); err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
+	}
+}
+
+func TestShutdowNil(t *testing.T) {
+	w := Watcher{}
+	if err := w.shutdown(); err == nil {
+		t.Errorf("expected %v error", ErrInotifyNil)
+	}
+}
+
+func TestShutdow(t *testing.T) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := Watcher{watcher: watcher}
+	if err := w.shutdown(); err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	if err := watcher.Add("/tmp/"); err == nil {
+		t.Error("expected error of inotify instance already closed")
 	}
 }
 

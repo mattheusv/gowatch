@@ -17,6 +17,9 @@ type App interface {
 	//Start start app and return cmd executable
 	Start() (*exec.Cmd, error)
 
+	//Stop stop current execution of app
+	Stop(*exec.Cmd) error
+
 	//Restart restart a cmd passed in parameter
 	Restart(*exec.Cmd) error
 }
@@ -46,7 +49,7 @@ func (app AppRunner) Compile() error {
 	}
 	buildFlags := []string{"build"}
 	buildFlags = append(buildFlags, app.buildFlags...)
-	return cmdRunBase(app.dir, "go", buildFlags...).Run()
+	return newCmd(app.dir, "go", buildFlags...).Run()
 }
 
 func (app AppRunner) Start() (*exec.Cmd, error) {
@@ -58,10 +61,17 @@ func (app AppRunner) Start() (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func (app AppRunner) Restart(cmd *exec.Cmd) error {
+func (app AppRunner) Stop(cmd *exec.Cmd) error {
 	logrus.Debugf("Killing current execution %d\n", cmd.Process.Pid)
 	if err := cmd.Process.Kill(); err != nil {
 		return fmt.Errorf("error to kill exiting process running: %v", err)
+	}
+	return nil
+}
+
+func (app AppRunner) Restart(cmd *exec.Cmd) error {
+	if err := app.Stop(cmd); err != nil {
+		return err
 	}
 	logrus.Debugf("Recompiling...")
 	if err := app.Compile(); err != nil {
@@ -77,12 +87,12 @@ func (app AppRunner) Restart(cmd *exec.Cmd) error {
 
 func cmdRunBinary(dir, binaryName string, args ...string) *exec.Cmd {
 	if strings.HasPrefix(binaryName, "/") {
-		return cmdRunBase(dir, binaryName, args...)
+		return newCmd(dir, binaryName, args...)
 	}
-	return cmdRunBase(dir, fmt.Sprintf("./%s", binaryName), args...)
+	return newCmd(dir, fmt.Sprintf("./%s", binaryName), args...)
 }
 
-func cmdRunBase(dir, command string, args ...string) *exec.Cmd {
+func newCmd(dir, command string, args ...string) *exec.Cmd {
 	cmd := exec.Command(command, args...)
 	cmd.Dir = dir
 	cmd.Stdin = os.Stdin

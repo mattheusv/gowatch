@@ -15,6 +15,9 @@ import (
 var (
 	//ErrCmdCompile go build command failed to compile program error
 	ErrCmdCompile = errors.New("error to compile program")
+
+	//ErrInotifyNil nil instance of fsnotify.Watcher
+	ErrInotifyNil = errors.New("inotify instance nil")
 )
 
 //Watcher struc to watch  to watch for .go file changes
@@ -27,24 +30,31 @@ type Watcher struct {
 
 	//interface to start, restart and build the watched program
 	app App
+
+	watcher *fsnotify.Watcher
 }
 
-//Start start the watching for changes  in .go files
-func Start(dir string, buildFlags, runFlags, ignore []string) error {
-	w := Watcher{
-		ignore: ignore,
-		dir:    dir,
+//NewWatcher create watcher struct with all values filled
+func NewWatcher(dir string, buildFlags, runFlags, ignore []string) (*Watcher, error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+	return &Watcher{
+		ignore:  ignore,
+		dir:     dir,
+		watcher: watcher,
 		app: AppRunner{
 			dir:        dir,
 			runFlags:   runFlags,
 			buildFlags: buildFlags,
 			binaryName: getCurrentFolderName(dir),
 		},
-	}
-	return w.run()
+	}, nil
 }
 
-func (w Watcher) run() error {
+//Run start the watching for changes  in .go files
+func (w Watcher) Run() error {
 	if err := w.app.Compile(); err != nil {
 		return err
 	}
@@ -52,7 +62,17 @@ func (w Watcher) run() error {
 	if err != nil {
 		return err
 	}
-	return w.watch(cmd)
+	if err := w.start(cmd); err != nil {
+		return err
+	}
+	return w.shutdown()
+}
+
+func (w Watcher) shutdown() error {
+	if w.watcher == nil {
+		return ErrInotifyNil
+	}
+	return w.watcher.Close()
 }
 
 func (w Watcher) isToIgnoreFile(file string) (bool, error) {
@@ -107,27 +127,23 @@ func addNewDirectories(w *fsnotify.Watcher, dir string, currentDirectories []str
 	return nil
 }
 
-func (w Watcher) watch(cmd *exec.Cmd) error {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return err
-	}
-	defer watcher.Close()
+func (w Watcher) start(cmd *exec.Cmd) error {
 	directories, err := discoverSubDirectories(w.dir)
 	if err != nil {
 		return err
 	}
+
 	for _, d := range directories {
-		if err := watcher.Add(d); err != nil {
+		if err := w.watcher.Add(d); err != nil {
 			return err
 		}
 	}
 
 	for {
-		if err := addNewDirectories(watcher, w.dir, directories); err != nil {
+		if err := addNewDirectories(w.watcher, w.dir, directories); err != nil {
 			return err
 		}
-		if err := w.writeEvent(watcher, cmd); err != nil {
+		if err := w.writeEvent(w.watcher, cmd); err != nil {
 			return err
 		}
 	}

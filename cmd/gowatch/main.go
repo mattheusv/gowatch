@@ -20,7 +20,12 @@ func main() {
 		os.Exit(2)
 	}
 
-	if err := gowatch.Start(cfg.Dir, cfg.Buildflags, cfg.RunFlags, cfg.Ignore); err != nil {
+	w, err := gowatch.NewWatcher(cfg.Dir, cfg.Buildflags, cfg.RunFlags, cfg.Ignore)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, errors.Wrapf(err, "Error to create new watcher"))
+		os.Exit(2)
+	}
+	if err := w.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, errors.Wrapf(err, "Error to start gowatch"))
 		os.Exit(2)
 	}

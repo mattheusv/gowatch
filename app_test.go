@@ -96,7 +96,7 @@ func TestCmdRunBase(t *testing.T) {
 	command := "testcase"
 	args := []string{"unittest", "--foobar"}
 	argsExpected := []string{"testcase", "unittest", "--foobar"}
-	cmd := cmdRunBase(dir, command, args...)
+	cmd := newCmd(dir, command, args...)
 	if cmd.Dir != dir {
 		t.Errorf(assertErrorMsg, dir, cmd.Dir)
 	}
