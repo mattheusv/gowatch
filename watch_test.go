@@ -45,6 +45,24 @@ func createTmpGoFile(dir, pattern string) (*os.File, error) {
 	return os.Create(fmt.Sprintf("%s/%s", dir, pattern))
 }
 
+func TestRun(t *testing.T) {
+	w, err := NewWatcher("./testdata/helloworld/", []string{}, []string{}, []string{})
+	if err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	errCh := make(chan error)
+	go func() {
+		errCh <- w.Run()
+	}()
+	//signal to stop events function
+	w.stop <- true
+	if err := <-errCh; err != nil {
+		if err != ErrStopNotifyEvents {
+			t.Fatalf(unexpectedErrorMsg, err)
+		}
+	}
+}
+
 func TestAddNewDirectories(t *testing.T) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {

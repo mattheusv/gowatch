@@ -18,6 +18,9 @@ var (
 
 	//ErrInotifyNil nil instance of fsnotify.Watcher
 	ErrInotifyNil = errors.New("inotify instance nil")
+
+	//ErrStopNotifyEvents identify when to stop the watcher
+	ErrStopNotifyEvents = errors.New("stop inotify events")
 )
 
 //Watcher struc to watch  to watch for .go file changes
@@ -32,6 +35,9 @@ type Watcher struct {
 	app App
 
 	watcher *fsnotify.Watcher
+
+	//signal to stop watcher events
+	stop chan bool
 }
 
 //NewWatcher create watcher struct with all values filled
@@ -44,6 +50,7 @@ func NewWatcher(dir string, buildFlags, runFlags, ignore []string) (*Watcher, er
 		ignore:  ignore,
 		dir:     dir,
 		watcher: watcher,
+		stop:    make(chan bool),
 		app: AppRunner{
 			dir:        dir,
 			runFlags:   runFlags,
@@ -92,8 +99,12 @@ func (w Watcher) isToIgnoreFile(file string) (bool, error) {
 	return false, nil
 }
 
-func (w Watcher) events(cmd *exec.Cmd) error {
+func (w *Watcher) events(cmd *exec.Cmd) error {
 	select {
+
+	case <-w.stop:
+		return ErrStopNotifyEvents
+
 	case event, ok := <-w.watcher.Events:
 		if !ok {
 			return nil
@@ -118,6 +129,7 @@ func (w Watcher) events(cmd *exec.Cmd) error {
 				}
 			}
 		}
+
 	case err, ok := <-w.watcher.Errors:
 		if !ok {
 			return fmt.Errorf("watcher files changes error: %v", err)
