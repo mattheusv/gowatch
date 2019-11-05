@@ -50,39 +50,60 @@ func TestAddNewDirectories(t *testing.T) {
 	if err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
 	}
+	watcher := Watcher{watcher: w}
+
 	tmpDir, err := ioutil.TempDir("", "TestAddNewDirectories")
 	if err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
 	}
 	defer os.RemoveAll(tmpDir)
-	existTmpdir, err := ioutil.TempDir(tmpDir, "TestAddNewDirectories")
+	if err := watcher.addDirectories(tmpDir); err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+
+	newTmpdir, err := ioutil.TempDir(tmpDir, "TestAddNewDirectories")
 	if err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
 	}
-	currentDirectories := []string{existTmpdir}
-	if _, err = ioutil.TempDir(tmpDir, "TestAddNewDirectories"); err != nil {
-		t.Fatalf(unexpectedErrorMsg, err)
-	}
-	if err := addNewDirectories(w, tmpDir, currentDirectories); err != nil {
+
+	if err := watcher.addDirectories(newTmpdir); err != nil {
 		t.Errorf(unexpectedErrorMsg, err)
 	}
 }
 
-func TestWriteEventRestart(t *testing.T) {
+func TestEventsRestart(t *testing.T) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir, err := createTmpDir("TestWriteEventRestart")
+
+	watcher := Watcher{
+		app:     appTestCompileError{},
+		watcher: w,
+	}
+
+	baseDir, err := createTmpDir("TestWriteEventRestart")
 	if err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
 	}
+	defer os.RemoveAll(baseDir)
+
+	if err := watcher.addDirectories(baseDir); err != nil {
+		t.Fatal(err)
+	}
+
+	dir, err := ioutil.TempDir(baseDir, "secondDir")
+	if err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+	// create new dir event
+	if err := watcher.events(nil); err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
+	}
+
 	defer os.RemoveAll(dir)
 	if err := w.Add(dir); err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
-	}
-	watcher := Watcher{
-		app: appTestCompileError{},
 	}
 
 	tmpFile, err := createTmpGoFile(dir, "main.go")
@@ -92,8 +113,7 @@ func TestWriteEventRestart(t *testing.T) {
 	t.Logf("Create tmp file: %s\n", tmpFile.Name())
 
 	// create file event
-	//should pass
-	if err := watcher.writeEvent(w, nil); err != nil {
+	if err := watcher.events(nil); err != nil {
 		t.Errorf(unexpectedErrorMsg, err)
 	}
 	if _, err := tmpFile.Write([]byte(`package main
@@ -102,7 +122,7 @@ func TestWriteEventRestart(t *testing.T) {
 	}
 
 	// write event
-	if err := watcher.writeEvent(w, nil); err != nil {
+	if err := watcher.events(nil); err != nil {
 		if !errors.Is(err, errProgramShoultNotRestartTest) {
 			t.Errorf(unexpectedErrorMsg, err)
 		}
@@ -110,21 +130,33 @@ func TestWriteEventRestart(t *testing.T) {
 
 }
 
-func TestWriteEvent(t *testing.T) {
+func TestEvents(t *testing.T) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir, err := createTmpDir("TestWriteEvent")
+	baseDir, err := createTmpDir("TestWriteEvent")
 	if err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
 	}
-	defer os.RemoveAll(dir)
-	if err := w.Add(dir); err != nil {
+	defer os.RemoveAll(baseDir)
+
+	watcher := Watcher{
+		ignore:  []string{"/tmp/*/*/main.go"},
+		watcher: w,
+	}
+
+	if err := watcher.addDirectories(baseDir); err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
 	}
-	watcher := Watcher{
-		ignore: []string{"/tmp/*/main.go"},
+	dir, err := ioutil.TempDir(baseDir, "secondDir")
+	if err != nil {
+		t.Fatalf(unexpectedErrorMsg, err)
+	}
+
+	// create new dir event
+	if err := watcher.events(nil); err != nil {
+		t.Errorf(unexpectedErrorMsg, err)
 	}
 
 	tmpFile, err := createTmpGoFile(dir, "main.go")
@@ -134,8 +166,7 @@ func TestWriteEvent(t *testing.T) {
 	t.Logf("Create tmp file: %s\n", tmpFile.Name())
 
 	// create file event
-	//should pass
-	if err := watcher.writeEvent(w, nil); err != nil {
+	if err := watcher.events(nil); err != nil {
 		t.Errorf(unexpectedErrorMsg, err)
 	}
 	if _, err := tmpFile.Write([]byte(`package main
@@ -144,38 +175,8 @@ func TestWriteEvent(t *testing.T) {
 	}
 
 	// write event
-	if err := watcher.writeEvent(w, nil); err != nil {
+	if err := watcher.events(nil); err != nil {
 		t.Errorf(unexpectedErrorMsg, err)
-	}
-}
-
-func TestHasNewDirectoriesFalse(t *testing.T) {
-	currentDirectories := []string{}
-	dir := "./testdata/helloworld/"
-	newDirectories, exist, err := hasNewDirectories(dir, currentDirectories)
-	if err != nil {
-		t.Fatal(unexpectedErrorMsg, err)
-	}
-	if exist {
-		t.Errorf("should not return new directories")
-	}
-	if len(newDirectories) != 0 {
-		t.Errorf("should not return new directories %v\n", newDirectories)
-	}
-}
-
-func TestHasNewDirectories(t *testing.T) {
-	currentDirectories := []string{}
-	dir := "./testdata/http-server/"
-	newDirectories, exist, err := hasNewDirectories(dir, currentDirectories)
-	if err != nil {
-		t.Fatal(unexpectedErrorMsg, err)
-	}
-	if !exist {
-		t.Errorf("should return new directories")
-	}
-	if len(newDirectories) == 0 {
-		t.Errorf("should return new directories")
 	}
 }
 
@@ -294,5 +295,13 @@ func TestContains(t *testing.T) {
 	value := list[0]
 	if !contains(list, value) {
 		t.Errorf("%s exist in %v\n", value, list)
+	}
+}
+
+func TestContainsFalse(t *testing.T) {
+	list := []string{"gowatch"}
+	value := "invalid value"
+	if contains(list, value) {
+		t.Errorf("%s not exist in %v\n", value, list)
 	}
 }

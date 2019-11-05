@@ -63,12 +63,16 @@ func (w Watcher) Run() error {
 		return err
 	}
 	if err := w.start(cmd); err != nil {
+		if err := w.shutdown(); err != nil {
+			return fmt.Errorf("Error to shutdown: %v", err)
+		}
 		return err
 	}
-	return w.shutdown()
+	return nil
 }
 
 func (w Watcher) shutdown() error {
+	logrus.Debug("clean up...")
 	if w.watcher == nil {
 		return ErrInotifyNil
 	}
@@ -88,10 +92,21 @@ func (w Watcher) isToIgnoreFile(file string) (bool, error) {
 	return false, nil
 }
 
-func (w Watcher) writeEvent(watcher *fsnotify.Watcher, cmd *exec.Cmd) error {
+func (w Watcher) events(cmd *exec.Cmd) error {
 	select {
-	case event, ok := <-watcher.Events:
+	case event, ok := <-w.watcher.Events:
 		if !ok {
+			return nil
+		}
+		if event.Op&fsnotify.Create == fsnotify.Create {
+			newDirectories, err := discoverSubDirectories(event.Name)
+			if err != nil {
+				return err
+			}
+			logrus.Debugf("find new directories: %v\n", newDirectories)
+			if err := w.addDirectories(newDirectories...); err != nil {
+				return err
+			}
 			return nil
 		}
 		if event.Op&fsnotify.Write == fsnotify.Write {
@@ -103,26 +118,11 @@ func (w Watcher) writeEvent(watcher *fsnotify.Watcher, cmd *exec.Cmd) error {
 				}
 			}
 		}
-	case err, ok := <-watcher.Errors:
+	case err, ok := <-w.watcher.Errors:
 		if !ok {
 			return fmt.Errorf("watcher files changes error: %v", err)
 		}
-	}
-	return nil
-}
 
-func addNewDirectories(w *fsnotify.Watcher, dir string, currentDirectories []string) error {
-	newDirectories, exist, err := hasNewDirectories(dir, currentDirectories)
-	if err != nil {
-		return err
-	}
-	if exist {
-		logrus.Debugf("find new directories: %v\n", newDirectories)
-		for _, dir := range newDirectories {
-			if err := w.Add(dir); err != nil {
-				return err
-			}
-		}
 	}
 	return nil
 }
@@ -132,22 +132,23 @@ func (w Watcher) start(cmd *exec.Cmd) error {
 	if err != nil {
 		return err
 	}
+	if err := w.addDirectories(directories...); err != nil {
+		return err
+	}
+	for {
+		if err := w.events(cmd); err != nil {
+			return err
+		}
+	}
+}
 
+func (w Watcher) addDirectories(directories ...string) error {
 	for _, d := range directories {
 		if err := w.watcher.Add(d); err != nil {
 			return err
 		}
 	}
-
-	for {
-		if err := addNewDirectories(w.watcher, w.dir, directories); err != nil {
-			return err
-		}
-		if err := w.writeEvent(w.watcher, cmd); err != nil {
-			return err
-		}
-	}
-
+	return nil
 }
 
 func (w Watcher) restart(cmd *exec.Cmd, event fsnotify.Event) error {
@@ -185,25 +186,6 @@ func discoverSubDirectories(baseDir string) ([]string, error) {
 		return nil, err
 	}
 	return directories, nil
-}
-
-func hasNewDirectories(dir string, currentDirectories []string) ([]string, bool, error) {
-	newDirectories := []string{}
-	directories, err := discoverSubDirectories(dir)
-	if err != nil {
-		return nil, false, err
-	}
-	for _, d := range directories {
-		if d != dir {
-			if !contains(currentDirectories, d) {
-				newDirectories = append(newDirectories, d)
-			}
-		}
-	}
-	if len(newDirectories) != 0 {
-		return newDirectories, true, nil
-	}
-	return nil, false, nil
 }
 
 func getCurrentFolderName(dir string) string {
