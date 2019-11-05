@@ -19,17 +19,17 @@ var (
 
 type appTestCompileError struct{}
 
-func (wa appTestCompileError) compile() error            { return nil }
-func (wa appTestCompileError) start() (*exec.Cmd, error) { return nil, nil }
-func (wa appTestCompileError) restart(cmd *exec.Cmd) error {
+func (wa appTestCompileError) Compile() error            { return nil }
+func (wa appTestCompileError) Start() (*exec.Cmd, error) { return nil, nil }
+func (wa appTestCompileError) Restart(cmd *exec.Cmd) error {
 	return errProgramShoultNotRestartTest
 }
 
 type appTest struct{}
 
-func (wa appTest) compile() error              { return nil }
-func (wa appTest) start() (*exec.Cmd, error)   { return nil, nil }
-func (wa appTest) restart(cmd *exec.Cmd) error { return nil }
+func (wa appTest) Compile() error              { return nil }
+func (wa appTest) Start() (*exec.Cmd, error)   { return nil, nil }
+func (wa appTest) Restart(cmd *exec.Cmd) error { return nil }
 
 func createTmpDir(prefix string) (string, error) {
 	dir, err := ioutil.TempDir("", prefix)
@@ -79,7 +79,7 @@ func TestWriteEventRestart(t *testing.T) {
 	if err := w.Add(dir); err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
 	}
-	watcher := watcher{
+	watcher := Watcher{
 		app: appTestCompileError{},
 	}
 
@@ -121,7 +121,7 @@ func TestWriteEvent(t *testing.T) {
 	if err := w.Add(dir); err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
 	}
-	watcher := watcher{
+	watcher := Watcher{
 		ignore: []string{"/tmp/*/main.go"},
 	}
 
@@ -178,7 +178,7 @@ func TestHasNewDirectories(t *testing.T) {
 }
 
 func TestRestart(t *testing.T) {
-	w := watcher{
+	w := Watcher{
 		dir: "./testdata/http-server",
 		app: appTest{},
 	}
@@ -192,7 +192,7 @@ func TestRestart(t *testing.T) {
 }
 
 func TestRestartIgnore(t *testing.T) {
-	w := watcher{
+	w := Watcher{
 		dir:    "./testdata/http-server",
 		ignore: []string{"main.go"},
 		app:    appTestCompileError{},
@@ -207,7 +207,7 @@ func TestRestartIgnore(t *testing.T) {
 }
 
 func TestIsToIgnoreFile(t *testing.T) {
-	w := watcher{
+	w := Watcher{
 		ignore: []string{"*_test.go"},
 	}
 	matched, err := w.isToIgnoreFile("main_test.go")

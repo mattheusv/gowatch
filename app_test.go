@@ -12,14 +12,14 @@ func TestStartApp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	w := watcherApp{
+	w := AppRunner{
 		dir:        fmt.Sprintf("%s/testdata/helloworld", pwd),
 		binaryName: fmt.Sprintf("%s/testdata/helloworld/helloworld", pwd),
 	}
-	if err := w.compile(); err != nil {
+	if err := w.Compile(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := w.start(); err != nil {
+	if _, err := w.Start(); err != nil {
 		t.Errorf(unexpectedErrorMsg, err)
 	}
 }
@@ -29,11 +29,11 @@ func TestCompileApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w := watcherApp{
+	w := AppRunner{
 		dir:        fmt.Sprintf("%s/testdata/helloworld", pwd),
 		binaryName: fmt.Sprintf("%s/testdata/helloworld/helloworld", pwd),
 	}
-	if err := w.compile(); err != nil {
+	if err := w.Compile(); err != nil {
 		t.Errorf(unexpectedErrorMsg, err)
 	}
 }
@@ -42,22 +42,22 @@ func TestCompileAppWithFlags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w := watcherApp{
+	w := AppRunner{
 		dir:        fmt.Sprintf("%s/testdata/helloworld", pwd),
 		binaryName: fmt.Sprintf("%s/testdata/helloworld/helloworld", pwd),
 		buildFlags: []string{"-x", "-v"},
 	}
-	if err := w.compile(); err != nil {
+	if err := w.Compile(); err != nil {
 		t.Errorf(unexpectedErrorMsg, err)
 	}
 }
 
 func TestRestartApp(t *testing.T) {
-	w := watcherApp{
+	w := AppRunner{
 		binaryName: "http-server",
 		dir:        "./testdata/http-server",
 	}
-	if err := w.compile(); err != nil {
+	if err := w.Compile(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -65,7 +65,7 @@ func TestRestartApp(t *testing.T) {
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.restart(cmd); err != nil {
+	if err := w.Restart(cmd); err != nil {
 		t.Fatalf(unexpectedErrorMsg, err)
 	}
 	if err := cmd.Process.Kill(); err != nil {

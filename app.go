@@ -9,13 +9,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type app interface {
-	compile() error
-	start() (*exec.Cmd, error)
-	restart(*exec.Cmd) error
+//App manage go apps
+type App interface {
+	//Compile compile app
+	Compile() error
+
+	//Start start app and return cmd executable
+	Start() (*exec.Cmd, error)
+
+	//Restart restart a cmd passed in parameter
+	Restart(*exec.Cmd) error
 }
 
-type watcherApp struct {
+//AppRunner struct to compile, start
+//and restart golang apps
+type AppRunner struct {
 	// directory to watcher for changes
 	dir string
 
@@ -29,35 +37,37 @@ type watcherApp struct {
 	binaryName string
 }
 
-func (wa watcherApp) compile() error {
-	if _, err := os.Stat(wa.binaryName); !os.IsNotExist(err) {
-		logrus.Debugf("Removing existing binary buildfile %s\n", wa.binaryName)
-		if err := os.Remove(wa.binaryName); err != nil {
+func (app AppRunner) Compile() error {
+	if _, err := os.Stat(app.binaryName); !os.IsNotExist(err) {
+		logrus.Debugf("Removing existing binary buildfile %s\n", app.binaryName)
+		if err := os.Remove(app.binaryName); err != nil {
 			return fmt.Errorf("error to remove existing binary: %v", err)
 		}
 	}
 	buildFlags := []string{"build"}
-	buildFlags = append(buildFlags, wa.buildFlags...)
-	return cmdRunBase(wa.dir, "go", buildFlags...).Run()
+	buildFlags = append(buildFlags, app.buildFlags...)
+	return cmdRunBase(app.dir, "go", buildFlags...).Run()
 }
-func (wa watcherApp) start() (*exec.Cmd, error) {
-	cmd := cmdRunBinary(wa.dir, wa.binaryName, wa.runFlags...)
+
+func (app AppRunner) Start() (*exec.Cmd, error) {
+	cmd := cmdRunBinary(app.dir, app.binaryName, app.runFlags...)
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
 
 	return cmd, nil
 }
-func (wa watcherApp) restart(cmd *exec.Cmd) error {
+
+func (app AppRunner) Restart(cmd *exec.Cmd) error {
 	logrus.Debugf("Killing current execution %d\n", cmd.Process.Pid)
 	if err := cmd.Process.Kill(); err != nil {
 		return fmt.Errorf("error to kill exiting process running: %v", err)
 	}
 	logrus.Debugf("Recompiling...")
-	if err := wa.compile(); err != nil {
+	if err := app.Compile(); err != nil {
 		return ErrCmdCompile
 	}
-	*cmd = *cmdRunBinary(wa.dir, wa.binaryName, wa.runFlags...)
+	*cmd = *cmdRunBinary(app.dir, app.binaryName, app.runFlags...)
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("error to start program: %v", err)
 	}

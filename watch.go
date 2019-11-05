@@ -17,7 +17,8 @@ var (
 	ErrCmdCompile = errors.New("error to compile program")
 )
 
-type watcher struct {
+//Watcher struc to watch  to watch for .go file changes
+type Watcher struct {
 	// directory to watcher for changes
 	dir string
 
@@ -25,15 +26,15 @@ type watcher struct {
 	ignore []string
 
 	//interface to start, restart and build the watched program
-	app app
+	app App
 }
 
 //Start start the watching for changes  in .go files
 func Start(dir string, buildFlags, runFlags, ignore []string) error {
-	w := watcher{
+	w := Watcher{
 		ignore: ignore,
 		dir:    dir,
-		app: watcherApp{
+		app: AppRunner{
 			dir:        dir,
 			runFlags:   runFlags,
 			buildFlags: buildFlags,
@@ -43,18 +44,18 @@ func Start(dir string, buildFlags, runFlags, ignore []string) error {
 	return w.run()
 }
 
-func (w watcher) run() error {
-	if err := w.app.compile(); err != nil {
+func (w Watcher) run() error {
+	if err := w.app.Compile(); err != nil {
 		return err
 	}
-	cmd, err := w.app.start()
+	cmd, err := w.app.Start()
 	if err != nil {
 		return err
 	}
 	return w.watch(cmd)
 }
 
-func (w watcher) isToIgnoreFile(file string) (bool, error) {
+func (w Watcher) isToIgnoreFile(file string) (bool, error) {
 	for _, pattern := range w.ignore {
 		matched, err := filepath.Match(pattern, file)
 		if err != nil {
@@ -67,7 +68,7 @@ func (w watcher) isToIgnoreFile(file string) (bool, error) {
 	return false, nil
 }
 
-func (w watcher) writeEvent(watcher *fsnotify.Watcher, cmd *exec.Cmd) error {
+func (w Watcher) writeEvent(watcher *fsnotify.Watcher, cmd *exec.Cmd) error {
 	select {
 	case event, ok := <-watcher.Events:
 		if !ok {
@@ -106,7 +107,7 @@ func addNewDirectories(w *fsnotify.Watcher, dir string, currentDirectories []str
 	return nil
 }
 
-func (w watcher) watch(cmd *exec.Cmd) error {
+func (w Watcher) watch(cmd *exec.Cmd) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -133,14 +134,14 @@ func (w watcher) watch(cmd *exec.Cmd) error {
 
 }
 
-func (w watcher) restart(cmd *exec.Cmd, event fsnotify.Event) error {
+func (w Watcher) restart(cmd *exec.Cmd, event fsnotify.Event) error {
 	ignore, err := w.isToIgnoreFile(event.Name)
 	if err != nil {
 		return err
 	}
 	if !ignore {
 		logrus.Debugf("Modified file: %s\n", event.Name)
-		return w.app.restart(cmd)
+		return w.app.Restart(cmd)
 	}
 	return nil
 }
